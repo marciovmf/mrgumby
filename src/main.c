@@ -1,10 +1,7 @@
 #include "common.h"
 #include "ast.h"
-#include "filesystem.h"
-#include "config.h"
 #include "eval.h"
-
-#include <string.h>
+#include "parser.h"
 
 #ifdef _WIN32
 #define strdup _strdup
@@ -43,8 +40,35 @@ int main_ast(int argc, char** argv)
   return 0;
 }
 
+
+int main_parser(int argc, char **argv)
+{
+  Lexer lexer;
+  char *buffer;
+  size_t fileSize;
+
+  if (argc > 1)
+  {
+    if (read_entire_file_to_memory(argv[1], &buffer, &fileSize, true) != 0)
+    {
+      return 1; 
+    }
+  } else
+  {
+    fprintf(stderr, "Usage: %s <filename>\n", argv[0]);
+    return 1;
+  }
+
+  lexer_init(&lexer, buffer);
+  ASTProgram* program = parse_program(&lexer);
+  int result = program == NULL ? 1 : 0;
+  ast_destroy_program(program);
+  free(buffer);
+  return result;
+}
+
 int main(int argc, char **argv)
 {
-  return main_ast(argc, argv);
+  return main_parser(argc, argv);
 }
 

@@ -51,6 +51,7 @@ typedef enum
   TOKEN_EXCLAMATION,        // !
   TOKEN_PLUS,               // +
   TOKEN_MINUS,              // -
+  TOKEN_SEMICOLON,          // ;
   TOKEN_IF,                 // if keyword
   TOKEN_ELSE,               // else keyword
   TOKEN_FOR,                // for keyword
@@ -104,6 +105,7 @@ const char* token_get_name(TokenType token)
     [TOKEN_SLASH]           = "Division operator",
     [TOKEN_PERCENT]         = "Modulus operator",
     [TOKEN_COMMA]           = "Comma",
+    [TOKEN_SEMICOLON]       = "Semicolon",
     [TOKEN_DOT]             = "Dot",
     [TOKEN_EXCLAMATION]     = "Logical not operator",
     [TOKEN_PLUS]            = "Sum operator",
@@ -129,7 +131,9 @@ const char* token_get_name(TokenType token)
 
 
 Token lexer_get_next_token(Lexer *lexer);
-bool parse_expression(Lexer* lexer);
+ASTExpression* parse_term(Lexer* lexer);
+ASTExpression* parse_expression(Lexer* lexer);
+ASTStatement* parse_statement(Lexer *lexer);
 bool parse_lvalue(Lexer* lexer);
 
 
@@ -171,7 +175,7 @@ Token lexer_peek_next_token(Lexer* lexer)
 }
 
 
-void lexer_skip_comment(Lexer *lexer)
+void lexer_skip_until_next_line(Lexer *lexer)
 {
   while (lexer->current_char != '\n' && lexer->current_char != '\0')
   {
@@ -182,11 +186,11 @@ void lexer_skip_comment(Lexer *lexer)
 
 void lexer_skip_whitespace(Lexer *lexer)
 {
-  while (isspace(lexer->current_char) || lexer->current_char == '#')
+  while (isspace(lexer->current_char) ||  lexer->current_char == '\r' || lexer->current_char == '#')
   {
     if (lexer->current_char == '#')
     {
-      lexer_skip_comment(lexer);  // Skip comment lines
+      lexer_skip_until_next_line(lexer);  // Skip comment line
     } else
     {
       lexer_advance(lexer);  // Skip whitespace
@@ -415,6 +419,14 @@ Token lexer_get_next_token(Lexer *lexer)
     lexer_advance(lexer);
     return token;
   }
+  else if (lexer->current_char == ';')
+  {
+    token.type = TOKEN_SEMICOLON;
+    token.value[0] = lexer->current_char;
+    token.value[1] = '\0';
+    lexer_advance(lexer);
+    return token;
+  }
   else if (lexer->current_char == '.')
   {
     token.type = TOKEN_DOT;
@@ -439,7 +451,7 @@ Token lexer_get_next_token(Lexer *lexer)
   else
   {
     printf("Unknown character at line %d, column %d: %c\n", lexer->line, lexer->column, lexer->current_char);
-    exit(1);
+    token.type = TOKEN_ERROR;
   }
 
   return token;
@@ -456,6 +468,11 @@ bool lexer_require_token(Lexer* lexer, TokenType expected_type, Token* out)
 }
 
 
+bool lexer_is_eof(Lexer* lexer)
+{
+  return lexer->current_char == 0;
+}
+
 
 //
 // Parser
@@ -468,10 +485,10 @@ bool lexer_require_token(Lexer* lexer, TokenType expected_type, Token* out)
 * <ArgList> -> [ <Expression> ( "," <Expression> )* ]
 * 
 */
-bool parse_arg_list(Lexer* lexer)
+ASTExpression* parse_arg_list(Lexer* lexer)
 {
   UNUSED(lexer);
-  return false;
+  return NULL;
 };
 
 
@@ -480,39 +497,62 @@ bool parse_arg_list(Lexer* lexer)
  *
  * <Factor> -> ( int_literal | float_literal | string_literal | <lvalue> | "(" <Expression> ")" )
  */ 
-bool parse_factor(Lexer* lexer)
+ASTExpression* parse_factor(Lexer* lexer)
 {
   Token look_ahead_token = lexer_peek_next_token(lexer);
+
+  if (look_ahead_token.type == TOKEN_SEMICOLON)
+  {
+    lexer_skip_token(lexer, TOKEN_SEMICOLON);
+    return NULL;
+  }
+
   if (look_ahead_token.type == TOKEN_OPEN_PAREN)
   {
-    return lexer_skip_token(lexer, TOKEN_OPEN_PAREN)
-      && parse_expression(lexer)
-      && lexer_skip_token(lexer, TOKEN_CLOSE_PAREN);
+    if (!lexer_skip_token(lexer, TOKEN_OPEN_PAREN))
+      return NULL;
+
+    ASTExpression* expression = parse_expression(lexer);
+
+    if (!lexer_skip_token(lexer, TOKEN_CLOSE_PAREN))
+    {
+      ast_destroy_expression(expression);
+      return NULL;
+    }
   }
 
   if (look_ahead_token.type == TOKEN_LITERAL_STRING)
   {
     Token literal_string;
-    return lexer_require_token(lexer, TOKEN_LITERAL_STRING, &literal_string) &&
-      (log_info("%s = '%s'\n", token_get_name(TOKEN_LITERAL_STRING), literal_string.value), true);
+    if (!lexer_require_token(lexer, TOKEN_LITERAL_STRING, &literal_string))
+      return NULL;
+    return ast_create_expression_literal_string(literal_string.value);
   }
 
   if (look_ahead_token.type == TOKEN_LITERAL_INT)
   {
     Token literal_int;
-    return lexer_require_token(lexer, TOKEN_LITERAL_INT, &literal_int);
+    if (!lexer_require_token(lexer, TOKEN_LITERAL_INT, &literal_int))
+      return NULL;
+    return ast_create_expression_literal_int(atoi(literal_int.value));
+
   }
   
   if (look_ahead_token.type == TOKEN_LITERAL_FLOAT)
   {
     Token literal_float;
-    return lexer_require_token(lexer, TOKEN_LITERAL_FLOAT, &literal_float);
+    if (!lexer_require_token(lexer, TOKEN_LITERAL_FLOAT, &literal_float))
+      return NULL;
+    return ast_create_expression_literal_int(atoi(literal_float.value));
   }
 
-  return parse_lvalue(lexer);
 
-  //report_error_unexpected_token(lexer, look_ahead_token.type);
-  //return false;
+  // lvalue 
+  Token identifier;
+  if (!lexer_require_token(lexer, TOKEN_IDENTIFIER, &identifier))
+    return NULL;
+
+  return ast_create_expression_lvalue(identifier.value);
 }
 
 
@@ -522,16 +562,21 @@ bool parse_factor(Lexer* lexer)
  * <UnaryExpression> -> [ ( "+" | "-" )] ] <Factor>
  * 
  */ 
-bool parse_unary_expression(Lexer* lexer)
+ASTExpression* parse_unary_expression(Lexer* lexer)
 {
   Token look_ahead_token = lexer_peek_next_token(lexer);
-  if (look_ahead_token.type == TOKEN_PLUS || look_ahead_token.type == TOKEN_MINUS)
-  {
-    Token sign = lexer_get_next_token(lexer);
-    UNUSED(sign);
-  }
-  return parse_factor(lexer);
-};
+  ASTUnaryOperator op;
+  if (look_ahead_token.type == TOKEN_PLUS)
+    op = OP_UNARY_PLUS;
+  else if (look_ahead_token.type == TOKEN_MINUS)
+    op = OP_UNARY_MINUS;
+  else if (look_ahead_token.type == TOKEN_EXCLAMATION)
+    op = OP_LOGICAL_NOT;
+  else
+    return parse_factor(lexer);
+
+  return ast_create_expression_unary(op, parse_factor(lexer));
+}
 
 
 /*
@@ -540,26 +585,35 @@ bool parse_unary_expression(Lexer* lexer)
  * <Term> -> <UnaryExpression> ( ( "*" | "/" | "%" ) <UnaryExpression> )*
  * 
  */ 
-bool parse_term(Lexer* lexer)
+ASTExpression* parse_term(Lexer* lexer)
 {
-  bool unary_ok = false;
+  ASTExpression* term = NULL;
   Token look_ahead_token = {0};
   while(true)
   {
-    unary_ok = parse_unary_expression(lexer);
+    ASTExpression* next_term  = parse_unary_expression(lexer);
+    if (next_term == NULL)
+      break;
+
+    term = next_term;
+
     look_ahead_token = lexer_peek_next_token(lexer);
-    if (! unary_ok)
+    ASTTermOperator op;
+    if (look_ahead_token.type == TOKEN_ASTERISK)
+      op = OP_MULTIPLY;
+    else if (look_ahead_token.type == TOKEN_SLASH )
+      op = OP_DIVIDE;
+    else if (look_ahead_token.type == TOKEN_PERCENT)
+      op = OP_MOD;
+    else
       break;
 
-    if (look_ahead_token.type != TOKEN_ASTERISK && look_ahead_token.type != TOKEN_SLASH &&look_ahead_token.type != TOKEN_PERCENT)
-      break;
-
-    Token op = lexer_get_next_token(lexer);
-    UNUSED(op);
+    lexer_get_next_token(lexer); // consume the look_ahead token
+    term = ast_create_expression_term(term, op, parse_unary_expression(lexer));
   }  
 
-  return unary_ok;
-};
+  return term;
+}
 
 
 /*
@@ -568,26 +622,30 @@ bool parse_term(Lexer* lexer)
  * <NumExpression> -> <Term> ( ( "+" | "-" ) <Term> )*
  * 
  */ 
-bool parse_num_expression(Lexer* lexer)
+ASTExpression* parse_num_expression(Lexer* lexer)
 {
-  bool term_ok = false;
+  ASTExpression* num_expression;
   Token look_ahead_token = {0};
- while(true)
- {
-    term_ok = parse_term(lexer);
-    look_ahead_token = lexer_peek_next_token(lexer);
-    if (! term_ok)
-      return false;
-
-    if (look_ahead_token.type != TOKEN_PLUS && look_ahead_token.type != TOKEN_MINUS)
+  while(true)
+  {
+    num_expression = parse_term(lexer);
+    if (num_expression == NULL)
       break;
-    
-    Token op = lexer_get_next_token(lexer);
-    UNUSED(op);
+
+    ASTFactorOperator op;
+    if (look_ahead_token.type == TOKEN_PLUS)
+      op = OP_ADD;
+    else if (look_ahead_token.type == TOKEN_MINUS)
+      op = OP_SUBTRACT;
+    else
+      break;
+
+    lexer_get_next_token(lexer); // consume the look_ahead token
+    num_expression = ast_create_expression_factor(num_expression, op, parse_term(lexer));
   } 
 
-  return term_ok;
-};
+  return num_expression;
+}
 
 
 /*
@@ -599,7 +657,7 @@ bool parse_lvalue(Lexer* lexer)
 {
   Token identifier;
   return lexer_require_token(lexer, TOKEN_IDENTIFIER, &identifier);
-};
+}
 
 
 /*
@@ -607,14 +665,17 @@ bool parse_lvalue(Lexer* lexer)
  *
  * <AssignmentStatement> -> <lvalue> "=" <Expression>
  */
-bool parse_assignment_statement(Lexer* lexer)
+ASTStatement* parse_assignment_statement(Lexer* lexer)
 {
-  log_info("Asssignment\n");
+  Token identifier;
+  if (!lexer_require_token(lexer, TOKEN_IDENTIFIER, &identifier))
+    return NULL;
 
-  return parse_lvalue(lexer)
-    && lexer_skip_token(lexer, TOKEN_OP_ASSIGN)
-    && parse_expression(lexer);
-};
+  if (!lexer_skip_token(lexer, TOKEN_OP_ASSIGN))
+    return NULL;
+
+  return ast_create_statement_assignment(identifier.value, parse_expression(lexer));
+}
 
 
 /*
@@ -626,7 +687,7 @@ bool parse_if_statement(Lexer* lexer)
 {
   UNUSED(lexer);
   return false;
-};
+}
 
 
 /*
@@ -638,7 +699,7 @@ bool parse_for_statement(Lexer* lexer)
 {
   UNUSED(lexer);
   return false;
-};
+}
 
 
 /*
@@ -646,10 +707,20 @@ bool parse_for_statement(Lexer* lexer)
  *
  * <StatementList> -> <Statement> [ <StatementList> ]
  */
-bool parse_statement_list(Lexer* lexer)
+ASTStatementList* parse_statement_list(Lexer* lexer)
 {
-  UNUSED(lexer);
-  return false;
+  ASTStatement* statement = parse_statement(lexer);
+  if (statement == NULL)
+    return NULL;
+
+  ASTStatementList* statement_list = ast_create_statement_list(8);
+  while(statement)
+  {
+    ast_statement_list_add(statement_list, statement);
+    statement = parse_statement(lexer);
+  }
+
+  return statement_list;
 };
 
 
@@ -658,10 +729,9 @@ bool parse_statement_list(Lexer* lexer)
  *
  * <ReturnStatement> -> "return" [ <Expression> ]
  */
-bool parse_return_statement(Lexer* lexer)
+ASTStatement* parse_return_statement(Lexer* lexer)
 {
-  UNUSED(lexer);
-  return false;
+  return ast_create_statement_return(parse_expression(lexer));
 };
 
 
@@ -674,7 +744,7 @@ bool parse_function_body(Lexer* lexer)
 {
   UNUSED(lexer);
   return false;
-};
+}
 
 
 /*
@@ -686,7 +756,7 @@ bool parse_function_declaration_statement(Lexer* lexer)
 {
   UNUSED(lexer);
   return false;
-};
+}
 
 
 /*
@@ -695,30 +765,39 @@ bool parse_function_declaration_statement(Lexer* lexer)
  * <Expression> -> <NumExpression> [ ( "<" | ">" | "<=" | ">=" | "==" | "!=" ) <NumExpression> ]
  * 
  */ 
-bool parse_expression(Lexer* lexer)
+ASTExpression* parse_expression(Lexer* lexer)
 {
-  bool expression_ok = false;
+  ASTExpression* expression = NULL;
+
   Token look_ahead_token = {0};
   while(true)
   {
-    expression_ok = parse_num_expression(lexer);
-
-    if (! expression_ok)
+    expression = parse_num_expression(lexer);
+    if (expression == NULL)
       break;
 
     look_ahead_token = lexer_peek_next_token(lexer);
-    if (look_ahead_token.type != TOKEN_OP_LT && look_ahead_token.type != TOKEN_OP_LTE
-        && look_ahead_token.type != TOKEN_OP_GT && look_ahead_token.type != TOKEN_OP_GTE
-        && look_ahead_token.type != TOKEN_OP_EQ && look_ahead_token.type != TOKEN_OP_NEQ)
-    {
+    ASTComparisonOperator op;
+    if (look_ahead_token.type == TOKEN_OP_LT)
+      op = OP_LT;
+    else if (look_ahead_token.type == TOKEN_OP_GT)
+      op = OP_GT;
+    else if (look_ahead_token.type == TOKEN_OP_LTE)
+      op = OP_LTE;
+    else if (look_ahead_token.type == TOKEN_OP_GTE)
+      op = OP_GTE;
+    else if (look_ahead_token.type == TOKEN_OP_EQ)
+      op = OP_EQ;
+    else if (look_ahead_token.type == TOKEN_OP_NEQ)
+      op = OP_NEQ;
+    else
       break;
-    }
 
-    Token op = lexer_get_next_token(lexer);
-    UNUSED(op);
+    lexer_get_next_token(lexer);  // skip look_ahead token
+    expression = ast_create_expression_comparison(expression, op, parse_num_expression(lexer));
   }
 
-  return expression_ok;
+  return expression;
 };
 
 
@@ -728,7 +807,7 @@ bool parse_expression(Lexer* lexer)
  * <Statement> -> ( <PrintStatement> | <InputStatement> | <ReturnStatement> | <AssignmentStatement>
  *  <FunctionDeclStatement> | <IfStatement> | <ForStatement> | <WhileStatement> | "{" <StatementList> "}")
  */
-bool parse_statement(Lexer *lexer)
+ASTStatement* parse_statement(Lexer *lexer)
 {
   Token look_ahead_token = lexer_peek_next_token(lexer);
 
@@ -738,45 +817,62 @@ bool parse_statement(Lexer *lexer)
     case TOKEN_IDENTIFIER:
       return parse_assignment_statement(lexer);
 
-    case TOKEN_OPEN_BRACE:
-      return parse_statement(lexer)
-        && lexer_skip_token(lexer, TOKEN_CLOSE_BRACE);
+    //case TOKEN_OPEN_BRACE:
+    //  return parse_statement(lexer)
+    //    && lexer_skip_token(lexer, TOKEN_CLOSE_BRACE);
 
     case TOKEN_RETURN:
       return parse_return_statement(lexer);
 
-    case TOKEN_FOR:
-      return parse_for_statement(lexer);
+    //case TOKEN_FOR:
+    //  return parse_for_statement(lexer);
 
-    case TOKEN_IF:
-      return parse_if_statement(lexer);
+    //case TOKEN_IF:
+    //  return parse_if_statement(lexer);
 
     default:
-      if (look_ahead_token.type != TOKEN_EOF)
-        log_error("Sytax error at %d, %d: Unexpected token '%s' while parsing statement\n",
-            lexer->line, lexer->column, token_get_name(look_ahead_token.type));
+      if (look_ahead_token.type == TOKEN_EOF)
+      {
+        lexer_skip_token(lexer, TOKEN_EOF); // consume the look_ahead token
+        return NULL;
+      }
   }
+
+  log_error("Sytax error at %d, %d: Unexpected token '%s' while parsing statement\n",
+      lexer->line, lexer->column, token_get_name(look_ahead_token.type));
 
   return false;
 }
 
 
 /*
-* Parses a program
-*
-* <Program> -> ( <StatementList> )*
-*/
-bool parse_program(Lexer *lexer)
+ * Parses a program
+ *
+ * <Program> -> ( <StatementList> )*
+ */
+ASTProgram* parse_program(Lexer *lexer)
 {
   bool success = true;
-  while (true) //lexer->current_char != 0)
+  ASTStatementList* statement_lsit = ast_create_statement_list(16);
+
+  while (!lexer_is_eof(lexer))
   {
-    if (!parse_statement(lexer))
+    ASTStatement* statement = parse_statement(lexer);
+    lexer_skip_whitespace(lexer);
+    if (statement == NULL)
     {
       success = false;
       break;
     }
+    ast_statement_list_add(statement_lsit, statement);
   }
-  return success;
+
+  if (!success)
+  {
+    ast_destroy_statement_list(statement_lsit);
+    return NULL;
+  }
+
+  return ast_create_program(statement_lsit);
 }
 

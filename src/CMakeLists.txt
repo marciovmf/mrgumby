@@ -7,8 +7,8 @@ list(APPEND SOURCES
   filesystem.h filesystem.c
   config.h config.c
   ast.h ast.c
-  eval.h eval.c
-  parser.c
+  eval.c
+  parser.h parser.c
   main.c
   version.rc)
 

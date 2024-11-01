@@ -31,13 +31,23 @@ typedef struct ASTFactor_t                ASTFactor;
 typedef struct ASTTerm_t                  ASTTerm;
 typedef struct ASTProgram_t               ASTProgram;
 
-typedef enum ASTOperator_e
+typedef enum ASTFactorOperator_e
 {
   OP_ADD,        // Addition
   OP_SUBTRACT,   // Subtraction
+} ASTFactorOperator;
+
+typedef enum ASTTermOperator_e
+{
   OP_MULTIPLY,   // Multiplication
   OP_DIVIDE,     // Division
   OP_MOD,        // Modulus
+  //OP_ASSIGN      // Assignment
+} ASTTermOperator;
+
+//TODO: Is this used ?
+typedef enum ASTOperator_e
+{
   OP_ASSIGN      // Assignment
 } ASTOperator;
 
@@ -116,14 +126,14 @@ struct ASTFactor_t
 {
   ASTExpression* left;
   ASTExpression* right;
-  ASTOperator op;
+  ASTFactorOperator op;
 };
 
 struct ASTTerm_t
 {
   ASTExpression* left;
   ASTExpression* right;
-  ASTOperator op;
+  ASTTermOperator op;
 };
 
 struct ASTLogicalExpression_t
@@ -224,6 +234,10 @@ struct ASTProgram_t
 //
 
 ASTExpression* ast_create_expression_binary(ASTExpression* left, ASTOperator op, ASTExpression* right);
+ASTExpression* ast_create_expression_term(ASTExpression* left, ASTTermOperator op, ASTExpression* right);
+ASTExpression* ast_create_expression_factor(ASTExpression* left, ASTFactorOperator op, ASTExpression* right);
+
+
 ASTExpression* ast_create_expression_unary(ASTUnaryOperator op, ASTExpression* expression);
 ASTExpression* ast_create_expression_logical(ASTExpression* left, ASTLogicalOperator op, ASTExpression* right);
 ASTExpression* ast_create_expression_comparison(ASTExpression* left, ASTComparisonOperator op, ASTExpression* right);

@@ -34,9 +34,11 @@ void ast_destroy_expression(ASTExpression* expression)
   case EXPR_FACTOR:
     free((void*) expression->as.factor_expr.left);
     free((void*) expression->as.factor_expr.right);
+    break;
   case EXPR_TERM:
     free((void*) expression->as.term_expr.left);
     free((void*) expression->as.term_expr.right);
+    break;
   case EXPR_LITERAL_STRING:
     free(expression->as.string_literal);
     break;
@@ -92,6 +94,9 @@ void ast_destroy_statement(ASTStatement* statement)
 
 void ast_destroy_program(ASTProgram* program)
 {
+  if (program == NULL)
+    return;
+
   for (unsigned int i = 0; i < program->body->count; i++)
   {
     ast_destroy_statement(program->body->statements[i]);
@@ -118,6 +123,26 @@ ASTExpression* ast_create_expression_binary(ASTExpression* left, ASTOperator op,
   expr->as.binary_expr.left = left;
   expr->as.binary_expr.op = op;
   expr->as.binary_expr.right = right;
+  return expr;
+}
+
+ASTExpression* ast_create_expression_term(ASTExpression* left, ASTTermOperator op, ASTExpression* right)
+{
+  ASTExpression* expr = AST_CREATE_NODE(ASTExpression);
+  expr->type = EXPR_TERM;
+  expr->as.term_expr.left   = left;
+  expr->as.term_expr.right  = right;
+  expr->as.term_expr.op     = op;
+  return expr;
+}
+
+ASTExpression* ast_create_expression_factor(ASTExpression* left, ASTFactorOperator op, ASTExpression* right)
+{
+  ASTExpression* expr = AST_CREATE_NODE(ASTExpression);
+  expr->type = EXPR_FACTOR;
+  expr->as.factor_expr.left   = left;
+  expr->as.factor_expr.right  = right;
+  expr->as.factor_expr.op     = op;
   return expr;
 }
 

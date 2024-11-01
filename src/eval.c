@@ -132,7 +132,7 @@ ExpressionValue eval_expression(SymbolTable* table, ASTExpression* expr)
         else
           resultType = EXPR_LITERAL_INT;
 
-        switch (expr->as.binary_expr.op) 
+        switch (expr->as.factor_expr.op) 
         {
           case OP_ADD:
             {
@@ -177,7 +177,7 @@ ExpressionValue eval_expression(SymbolTable* table, ASTExpression* expr)
           resultType = EXPR_LITERAL_FLOAT;
         else
           resultType = EXPR_LITERAL_INT;
-        switch (expr->as.binary_expr.op) 
+        switch (expr->as.term_expr.op) 
         {
           case OP_MULTIPLY:
             {
