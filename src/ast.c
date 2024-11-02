@@ -7,7 +7,6 @@
 
 #define AST_CREATE_NODE(T) (T*)(malloc(sizeof(T)))
 
-
 void ast_destroy_expression(ASTExpression* expression)
 {
   if (expression == NULL)
@@ -104,6 +103,30 @@ void ast_destroy_program(ASTProgram* program)
   }
 
   free(program);
+}
+
+void ast_destroy_statement_list(ASTStatementList* stmt_list)
+{
+  if (stmt_list == NULL)
+    return;
+
+  for (size_t i = 0; i < stmt_list->count; i++)
+    ast_destroy_statement(stmt_list->statements[i]);
+
+  free(stmt_list->statements);
+  free(stmt_list);
+}
+
+void ast_destroy_expression_list(ASTExpressionList* expr_list)
+{
+  if (expr_list == NULL)
+    return;
+
+  for (size_t i = 0; i < expr_list->count; i++)
+    ast_destroy_expression(expr_list->expressions[i]);
+
+  free(expr_list->expressions);
+  free(expr_list);
 }
 
 //
@@ -209,6 +232,45 @@ ASTExpression* ast_create_expression_lvalue(const char* identifier)
 }
 
 
+ASTExpression* ast_create_expression_function_call(const char* identifier, ASTExpressionList* args)
+{
+  ASTExpression* expr = AST_CREATE_NODE(ASTExpression);
+  expr->type = EXPR_FUNCTION_CALL;
+  smallstr(&expr->as.func_call_expr.identifier, identifier);
+  expr->as.func_call_expr.args = args;
+  return expr;
+}
+
+ASTExpressionList* ast_create_expression_list()
+{
+  const int default_capacity = 4;
+  ASTExpressionList* expr_list = AST_CREATE_NODE(ASTExpressionList);
+  expr_list->count = 0;
+  expr_list->capacity = default_capacity;
+  expr_list->expressions = (ASTExpression**)(malloc(sizeof(ASTExpression*) * default_capacity));
+  return expr_list;
+}
+
+size_t ast_expression_list_add(ASTExpressionList* expr_list, ASTExpression* expression)
+{
+  ASSERT(expr_list != NULL);
+  ASSERT(expression != NULL);
+
+  if (expr_list->count >= expr_list->capacity)
+  {
+    expr_list->capacity *= 2;
+    expr_list->expressions = (ASTExpression**)realloc(expr_list->expressions, 
+        expr_list->capacity * sizeof(ASTStatement*));
+  }
+
+  expr_list->expressions[expr_list->count] = expression;
+  expr_list->count++;
+
+  return expr_list->count;
+}
+
+
+
 //
 // Helper functions for ASTStatement nodes
 //
@@ -293,6 +355,16 @@ ASTStatement* ast_create_statement_break(void)
   return stmt;
 }
 
+ASTStatement* ast_create_statement_function_call(ASTExpression* func_call_expr)
+{
+  ASSERT(func_call_expr != NULL);
+  ASSERT(func_call_expr->type == EXPR_FUNCTION_CALL);
+  ASTStatement* stmt = AST_CREATE_NODE(ASTStatement);
+  stmt->type = AST_STATEMENT_FUNCTION_CALL;
+  stmt->as.func_call_expr = func_call_expr;
+  return stmt;
+}
+
 //
 // Helper function to create a new block
 //
@@ -326,21 +398,10 @@ size_t ast_statement_list_add(ASTStatementList* stmt_list, ASTStatement* stateme
   return stmt_list->count;
 }
 
-void ast_destroy_statement_list(ASTStatementList* stmt_list)
-{
-  if (stmt_list == NULL)
-    return;
-
-  for (size_t i = 0; i < stmt_list->count; i++)
-    free(stmt_list->statements[i]);
-
-  free(stmt_list->statements);
-  free(stmt_list);
-}
-
 ASTProgram* ast_create_program(ASTStatementList* statements) 
 {
   ASTProgram* program = AST_CREATE_NODE(ASTProgram);
   program->body = statements;
   return program;
 }
+
