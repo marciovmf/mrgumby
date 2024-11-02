@@ -1,64 +1,31 @@
+
+
+<ArgList>               -> [ <Expression> ( "," <Expression> )* ]
+<Factor>                -> ( int_literal | float_literal | string_literal | <lvalue> | "(" <Expression> ")" )
+<UnaryExpression>       -> [ ( "+" | "-" )] <Factor>
+<Term>                  -> <UnaryExpression> ( ( "*" | "/" | "%" ) <UnaryExpression> )*
+<NumExpression>         -> <Term> ( ( "+" | "-" ) <Term> )*
+<lvalue>                -> identifier
+<AssignmentStatement>   -> <lvalue> "=" <Expression>
+<ifStatement>           -> "if" "(" <Expression> ")" <Statement> [ "else" <Statement> ]
+<ForStatement>          -> "for" "(" [<AssignmentStatement>] ";" [<expression>] ";" [<AssignmentStatement>] ")" <Statement> 
+<StatementList>         -> <Statement> [ <StatementList> ]
+<ReturnStatement>       -> "return" [ <Expression> ]
+<FunctionBody>          -> "(" <ParamList> ")" <Statement>
+<FunctionDeclStatement> -> "function" identifier <FunctionBody>
+<Expression>            -> <NumExpression> [ ( "<" | ">" | "<=" | ">=" | "==" | "!=" ) <NumExpression> ]
+<Statement>             -> (
+                              <PrintStatement>
+                              | <InputStatement> ";"
+                              | <ReturnStatement> ";"
+                              | <AssignmentStatement> ";"
+                              | <BreakStatement> ";"
+                              | <FunctionDeclStatement>
+                              | <IfStatement>
+                              | <ForStatement>
+                              | <WhileStatement>
+                              | "{" <StatementList> "}"
+                           )
+
 <Program> -> ( <StatementList> )*
 
-<StatementList> -> <Statement> [ <StatementList> ]
-
-<Statement> -> <AssignmentStatement>      // AST_STATEMENT_ASSIGNMENT
-             | <IfStatement>              // AST_STATEMENT_IF
-             | <ForStatement>             // AST_STATEMENT_FOR
-             | <WhileStatement>           // AST_STATEMENT_WHILE
-             | <ReturnStatement>          // AST_STATEMENT_RETURN
-             | <FunctionDeclStatement>    // AST_STATEMENT_FUNCTION_DECL
-             | <PrintStatement>           // AST_STATEMENT_PRINT
-             | <InputStatement>           // AST_STATEMENT_INPUT
-             | "{" <StatementList> "}"    // Block statement
-
-<AssignmentStatement> -> <lvalue> "=" <Expression>        // AST_STATEMENT_ASSIGNMENT
-
-<IfStatement> -> "if" "(" <Expression> ")" <Statement> [ "else" <Statement> ]    // AST_STATEMENT_IF
-
-<ForStatement> -> "for" "(" [<AssignmentStatement>] ";" [<Expression>] ";" [<AssignmentStatement>] ")" <Statement>   // AST_STATEMENT_FOR
-
-<WhileStatement> -> "while" "(" <Expression> ")" <Statement>     // AST_STATEMENT_WHILE
-
-<ReturnStatement> -> "return" [ <Expression> ]    // AST_STATEMENT_RETURN
-
-<FunctionDeclStatement> -> "function" identifier <FunctionBody>  // AST_STATEMENT_FUNCTION_DECL
-
-<FunctionBody> -> "(" <ParamList> ")" <Statement>
-
-<PrintStatement> -> "print" "(" <Expression> ")"    // AST_STATEMENT_PRINT
-
-<InputStatement> -> "input" "(" <lvalue> ")"        // AST_STATEMENT_INPUT
-
-<Expression> -> <LogicalOrExpression>
-
-// Logical operators: || has the lowest precedence in expressions
-<LogicalOrExpression> -> <LogicalAndExpression> ( "||" <LogicalAndExpression> )*
-
-<LogicalAndExpression> -> <EqualityExpression> ( "&&" <EqualityExpression> )*
-
-// Comparison operators: <, >, <=, >=, ==, !=
-<EqualityExpression> -> <RelationalExpression> [ ( "==" | "!=" ) <RelationalExpression> ]
-
-<RelationalExpression> -> <AdditiveExpression> [ ( "<" | ">" | "<=" | ">=" ) <AdditiveExpression> ]
-
-// Arithmetic operators: +, -
-<AdditiveExpression> -> <MultiplicativeExpression> ( ( "+" | "-" ) <MultiplicativeExpression> )*
-
-// Arithmetic operators: *, /, %
-<MultiplicativeExpression> -> <UnaryExpression> ( ( "*" | "/" | "%" ) <UnaryExpression> )*
-
-// Unary operators: +, -, !
-<UnaryExpression> -> [ ( "+" | "-" | "!" ) ] <Factor>
-
-<Factor> -> int_literal 
-          | float_literal 
-          | string_literal 
-          | <lvalue> 
-          | "(" <Expression> ")"
-
-<lvalue> -> identifier
-
-<ParamList> -> [ identifier ( "," identifier )* ]
-
-<ArgList> -> [ <Expression> ( "," <Expression> )* ]

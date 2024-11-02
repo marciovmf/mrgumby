@@ -19,6 +19,7 @@ void ast_destroy_expression(ASTExpression* expression)
     break;
   case EXPR_UNARY:
     free((void*) expression->as.unary_expr.expression);
+    break;
   case EXPR_BINARY:
     free((void*) expression->as.binary_expr.left);
     free((void*) expression->as.binary_expr.right);
