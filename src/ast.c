@@ -360,10 +360,6 @@ ASTStatement* ast_create_statement_function_call(ASTExpression* func_call_expr)
   return stmt;
 }
 
-//
-// Helper function to create a new block
-//
-
 ASTProgram* ast_create_program(ASTStatement* body) 
 {
   ASTProgram* program = AST_CREATE_NODE(ASTProgram);

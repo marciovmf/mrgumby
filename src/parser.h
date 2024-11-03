@@ -55,8 +55,6 @@ typedef struct
   char value[PARSER_MAX_TOKEN_LENGTH];
 } Token;
 
-void token_clone(const Token* original, Token* token);
-
 /* Lexer */
 
 

@@ -43,12 +43,6 @@ typedef enum ASTTermOperator_e
   //OP_ASSIGN      // Assignment
 } ASTTermOperator;
 
-//TODO: Is this used ?
-typedef enum ASTOperator_e
-{
-  OP_ASSIGN      // Assignment
-} ASTOperator;
-
 typedef enum ASTUnaryOperator_e
 {
   OP_UNARY_PLUS,   // Unary plus
@@ -136,11 +130,11 @@ struct ASTLogicalExpression_t
   ASTLogicalOperator op;
 };
 
-typedef struct ASTFunctionCallExpression_t
+struct ASTFunctionCallExpression_t
 {
   Smallstr identifier;
   ASTExpression* args;
-} ASTFunctionCallExpression;
+};
 
 struct ASTExpression_t
 {
@@ -159,7 +153,6 @@ struct ASTExpression_t
   } as;
   ASTExpression* next;
 };
-
 
 struct ASTAssignment_t
 {
@@ -227,7 +220,6 @@ struct ASTStatement_t
   ASTStatement* next;   // Next statement when this node is part of a statement list
 };
 
-
 struct ASTProgram_t
 {
   ASTStatement* body;
@@ -236,11 +228,10 @@ struct ASTProgram_t
 //
 // Helper functions for ASTExpression nodes
 //
+ASTProgram* ast_create_program(ASTStatement* statements);
 
 ASTExpression* ast_create_expression_term(ASTExpression* left, ASTTermOperator op, ASTExpression* right);
 ASTExpression* ast_create_expression_factor(ASTExpression* left, ASTFactorOperator op, ASTExpression* right);
-
-
 ASTExpression* ast_create_expression_unary(ASTUnaryOperator op, ASTExpression* expression);
 ASTExpression* ast_create_expression_logical(ASTExpression* left, ASTLogicalOperator op, ASTExpression* right);
 ASTExpression* ast_create_expression_comparison(ASTExpression* left, ASTComparisonOperator op, ASTExpression* right);
@@ -253,29 +244,20 @@ ASTExpression* ast_create_expression_function_call(const char* identifier, ASTEx
 //
 // Helper functions for creating ASTStatement
 //
-
 ASTStatement* ast_create_statement_assignment(const char* identifier, ASTExpression* expression);
 ASTStatement* ast_create_statement_if(ASTExpression* condition, ASTStatement* if_branch, ASTStatement* else_branch);
 ASTStatement* ast_create_statement_for(ASTStatement* init, ASTExpression* condition, ASTStatement* update, ASTStatement* body);
 ASTStatement* ast_create_statement_while(ASTExpression* condition, ASTStatement* body);
 ASTStatement* ast_create_statement_return(ASTExpression* expression);
 ASTStatement* ast_create_statement_function_decl(const char* identifier, ASTStatement* params, ASTStatement* body);
-
 ASTStatement* ast_create_statement_function_call(ASTExpression* function_call_expression);
 ASTStatement* ast_create_statement_print(ASTExpression* expression);
 ASTStatement* ast_create_statement_input(const char* identifier);
 ASTStatement* ast_create_statement_break(void);
 
-
-
 //
-// Helper functions for Block, ASTSatementList and ASTProgram
+// Helper functions for destroying nodes
 //
-
-ASTProgram*       ast_create_program(ASTStatement* statements);
-ASTStatement*     ast_create_statement_list(size_t capacity);
-
-
 void ast_destroy_expression(ASTExpression* expression);
 void ast_destroy_statement(ASTStatement* statement);
 void ast_destroy_program(ASTProgram* program);
