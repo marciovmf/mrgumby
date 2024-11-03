@@ -163,8 +163,8 @@ Token lexer_get_identifier(Lexer *lexer)
   else if (strcmp(token.value, "for") == 0) token.type = TOKEN_FOR;
   else if (strcmp(token.value, "include") == 0) token.type = TOKEN_INCLUDE;
   else if (strcmp(token.value, "return") == 0) token.type = TOKEN_RETURN;
+  else if (strcmp(token.value, "while") == 0) token.type = TOKEN_WHILE;
   //else if (strcmp(token.value, "function") == 0) token.type = TOKEN_FUNCTION;
-  //else if (strcmp(token.value, "while") == 0) token.type = TOKEN_WHILE;
   //else if (strcmp(token.value, "endwhile") == 0) token.type = TOKEN_ENDWHILE;
   else token.type = TOKEN_IDENTIFIER;
 
@@ -764,14 +764,41 @@ ASTStatement* parse_if_statement(Lexer* lexer)
 
 
 /*
+ * Parses a 'while' statement
+ *
+ * <WhileStatement> -> "while" "(" <Expression> ")" <Statement> 
+ */
+ASTStatement* parse_while_statement(Lexer* lexer)
+{
+  // while ( Condition )
+  if (lexer_skip_token(lexer, TOKEN_WHILE) == false
+      || lexer_skip_token(lexer, TOKEN_OPEN_PAREN) == false)
+    return NULL;
+  ASTExpression* condition = parse_expression(lexer);
+  if (condition == NULL)
+    return NULL;
+  
+  if (lexer_skip_token(lexer, TOKEN_CLOSE_PAREN) == false)
+    return NULL;
+
+  // then_block
+  ASTStatement* then_block = parse_statement(lexer);
+  if (then_block == NULL)
+    return NULL;
+
+  return ast_create_statement_while(condition, then_block);
+}
+
+
+/*
  * Parses a 'for' statement
  *
  * <ForStatement> -> "for" "(" [<AssignmentStatement>] ";" [<expression>] ";" [<AssignmentStatement>] ")" <Statement> 
  */
-bool parse_for_statement(Lexer* lexer)
+ASTStatement* parse_for_statement(Lexer* lexer)
 {
   UNUSED(lexer);
-  return false;
+  return NULL;
 }
 
 
@@ -782,6 +809,9 @@ bool parse_for_statement(Lexer* lexer)
  */
 ASTStatement* parse_return_statement(Lexer* lexer)
 {
+  ASTExpression* expression = parse_expression(lexer);
+  if (expression == NULL)
+    return NULL;
   return ast_create_statement_return(parse_expression(lexer));
 };
 
@@ -882,6 +912,7 @@ ASTStatement* parse_statement(Lexer *lexer)
 
         return block;
       }
+
     case TOKEN_IDENTIFIER:
       {
         if (look_ahead_token2.type == TOKEN_OPEN_PAREN)
@@ -902,6 +933,7 @@ ASTStatement* parse_statement(Lexer *lexer)
         }
         break;
       }
+   
     case TOKEN_RETURN:
       {
         ASTStatement* statement = parse_return_statement(lexer);
@@ -909,13 +941,18 @@ ASTStatement* parse_statement(Lexer *lexer)
           return statement;
         break;
       }
-
-      //case TOKEN_OPEN_BRACE:
-      //  return parse_statement(lexer)
-      //    && 
-
-      //case TOKEN_FOR:
-      //  return parse_for_statement(lexer);
+   
+    case TOKEN_FOR:
+      {
+        return parse_for_statement(lexer);
+        break;
+      }
+   
+    case TOKEN_WHILE:
+      {
+        return parse_while_statement(lexer);
+        break;
+      }
 
     case TOKEN_IF:
       return parse_if_statement(lexer);
@@ -955,6 +992,7 @@ ASTStatement* parse_statement_list(Lexer* lexer)
 
   return first_statement;
 };
+
 
 /*
  * Parses a program

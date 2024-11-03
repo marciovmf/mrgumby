@@ -37,6 +37,7 @@ typedef enum TokenType_e
   TOKEN_IF,                 // if keyword
   TOKEN_ELSE,               // else keyword
   TOKEN_FOR,                // for keyword
+  TOKEN_WHILE,              // while keyword
   TOKEN_RETURN,             // return keyword
   TOKEN_INCLUDE,            // include keyword
   TOKEN_IDENTIFIER,         // <variable names>
