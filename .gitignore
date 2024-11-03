@@ -35,3 +35,6 @@ tags
 .exrc
 build/
 .cache
+*.vim
+*.rdbg
+*.vim

@@ -1,7 +1,7 @@
 
 
 <ArgList>               -> [ <Expression> ( "," <Expression> )* ]
-<Factor>                -> ( int_literal | float_literal | string_literal | <lvalue> | "(" <Expression> ")" )
+<Factor>                -> ( int_literal | float_literal | string_literal | <lvalue> | <FunctionCall> | "(" <Expression> ")" )
 <UnaryExpression>       -> [ ( "+" | "-" )] <Factor>
 <Term>                  -> <UnaryExpression> ( ( "*" | "/" | "%" ) <UnaryExpression> )*
 <NumExpression>         -> <Term> ( ( "+" | "-" ) <Term> )*
@@ -12,10 +12,12 @@
 <StatementList>         -> <Statement> [ <StatementList> ]
 <ReturnStatement>       -> "return" [ <Expression> ]
 <FunctionBody>          -> "(" <ParamList> ")" <Statement>
-<FunctionDeclStatement> -> "function" identifier <FunctionBody>
+<FunctionDeclStatement> -> "function" identifier "(" [ identifier ( "," identifier )* ] ")" <FunctionBody>
 <Expression>            -> <NumExpression> [ ( "<" | ">" | "<=" | ">=" | "==" | "!=" ) <NumExpression> ]
+<FunctionCall>          -> identifier "(" <ArgList> ")"
 <Statement>             -> (
                               <PrintStatement>
+                              | <FunctionCall> ";"
                               | <InputStatement> ";"
                               | <ReturnStatement> ";"
                               | <AssignmentStatement> ";"
