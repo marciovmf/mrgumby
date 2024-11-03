@@ -6,11 +6,12 @@
 
 /* Token */
 
-#define PARSER_MAX_TOKEN_LENGTH 100
 
-typedef enum
+typedef enum TokenType_e
 {
   TOKEN_ERROR,              // Represents a tokenizer error
+  TOKEN_LOGICAL_AND,        // &&
+  TOKEN_LOGICAL_OR,         // ||
   TOKEN_OP_ASSIGN,          // =
   TOKEN_OP_EQ,              // ==
   TOKEN_OP_NEQ,             // !=
@@ -32,12 +33,12 @@ typedef enum
   TOKEN_EXCLAMATION,        // !
   TOKEN_PLUS,               // +
   TOKEN_MINUS,              // -
+  TOKEN_SEMICOLON,          // ;
   TOKEN_IF,                 // if keyword
   TOKEN_ELSE,               // else keyword
   TOKEN_FOR,                // for keyword
   TOKEN_RETURN,             // return keyword
   TOKEN_INCLUDE,            // include keyword
-  TOKEN_FUNCTION,           // function keyword
   TOKEN_IDENTIFIER,         // <variable names>
   TOKEN_LITERAL_INT,        // [0-9]+
   TOKEN_LITERAL_FLOAT,      // [0-9]*"."[0-9]+
@@ -46,7 +47,7 @@ typedef enum
   TOKEN_COUNT_
 } TokenType;
 
-
+#define PARSER_MAX_TOKEN_LENGTH 100
 typedef struct
 {
   TokenType type;
@@ -57,7 +58,8 @@ void token_clone(const Token* original, Token* token);
 
 /* Lexer */
 
-typedef struct
+
+typedef struct Lexer_t
 {
   char *buffer;        // Buffer containing the file contents
   char current_char;   // Current character
@@ -66,8 +68,6 @@ typedef struct
   int line;            // Current line number
   int column;          // Current column number
 } Lexer;
-
-
 
 
 /* Parser */

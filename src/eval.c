@@ -116,13 +116,10 @@ ExpressionValue eval_expression(SymbolTable* table, ASTExpression* expr)
       return runtime_value_create_float(expr->as.number_literal);
     case EXPR_LITERAL_STRING:
       return runtime_value_create_string(expr->as.string_literal);
-    case EXPR_BINARY:
-      ASSERT_BREAK(); // TODO: review  this
-      break;
     case EXPR_TERM:
       {
-        ExpressionValue left = eval_expression(table, expr->as.binary_expr.left);
-        ExpressionValue right = eval_expression(table, expr->as.binary_expr.right);
+        ExpressionValue left = {0}; //eval_expression(table, expr->as.binary_expr.left);
+        ExpressionValue right = {0}; //eval_expression(table, expr->as.binary_expr.right);
         ASTExpressionType resultType;
 
         if (left.type == EXPR_LITERAL_STRING || right.type == EXPR_LITERAL_STRING)
@@ -167,8 +164,8 @@ ExpressionValue eval_expression(SymbolTable* table, ASTExpression* expr)
       break;
     case EXPR_FACTOR: 
       {
-        ExpressionValue left = eval_expression(table, expr->as.binary_expr.left);
-        ExpressionValue right = eval_expression(table, expr->as.binary_expr.right);
+        ExpressionValue left = {0}; // eval_expression(table, expr->as.binary_expr.left);
+        ExpressionValue right =  {0}; //val_expression(table, expr->as.binary_expr.right);
         ASTExpressionType resultType;
 
         if (left.type == EXPR_LITERAL_STRING || right.type == EXPR_LITERAL_STRING)
@@ -342,15 +339,16 @@ ExpressionValue eval_statement(SymbolTable* table, ASTStatement* stmt)
 int eval_program(SymbolTable* table, ASTProgram* program) 
 {
   ExpressionValue last_value = {0};
+  ASTStatement* statement = program->body;
 
-  for (unsigned int i = 0; i < program->body->count; i++)
+  while(statement != NULL)
   {
-    ASTStatement* statement = program->body->statements[i];
     last_value = eval_statement(table, statement);
     if (last_value.error_code != RUNTIME_SUCCESS)
-      return last_value.error_code;
-  }
+      return (int) last_value.error_code;
 
+    statement = statement->next;
+  }
 
   if (last_value.type == EXPR_LITERAL_INT)
     return (int) last_value.as.number_value;

@@ -74,7 +74,8 @@ extern "C" {
 
 #ifdef COMPILER_MSVC
 # define log_info(fmt, ...) debug_print(stdout, "INFO",  fmt, __VA_ARGS__)
-# define log_error(fmt, ...) debug_print_detailed(stderr, "ERROR", __LINE__, __FILE__, __func__, fmt, __VA_ARGS__)
+# define log_error_detail(fmt, ...) debug_print_detailed(stderr, "ERROR", __LINE__, __FILE__, __func__, fmt, __VA_ARGS__)
+# define log_error(fmt, ...) debug_print(stderr, "ERROR", fmt, __VA_ARGS__)
 # define log_warning(fmt, ...) debug_print(stdout, "WARNING", fmt, __VA_ARGS__)
 # ifdef DEBUG
 #   define log_debug(fmt, ...) ldkLogPrintDetailed(stdout, "DEBUG", __FILE__, __LINE__, __func__, fmt, __VA_ARGS__)
@@ -83,7 +84,8 @@ extern "C" {
 # endif //DEBUG
 # else
 # define log_info(fmt, ...) debug_print(stdout, "INFO",  fmt, ##__VA_ARGS__)
-# define log_error(fmt, ...) debug_print_detailed(stderr, "ERROR", __func__, __FILE__, __LINE__, fmt, ##__VA_ARGS__)
+# define log_error_detail(fmt, ...) debug_print_detailed(stderr, "ERROR", __LINE__, __FILE__, __func__, fmt, ## __VA_ARGS__)
+# define log_error(fmt, ...) debug_print(stderr, "ERROR", fmt, ##__VA_ARGS__)
 # define log_warning(fmt, ...) debug_print_detailed(stdout, "WARNING", __func__, __FILE__, __LINE__, fmt, ##__VA_ARGS__)
 #     ifdef DEBUG
 #       define log_warning(fmt, ...) debug_print_detailed(stdout, "WARNING", __func__, __FILE__, __LINE__, fmt, ##__VA_ARGS__)
