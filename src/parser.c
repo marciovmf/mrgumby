@@ -797,8 +797,27 @@ ASTStatement* parse_while_statement(Lexer* lexer)
  */
 ASTStatement* parse_for_statement(Lexer* lexer)
 {
-  UNUSED(lexer);
-  return NULL;
+  // while ( Condition )
+  if (lexer_skip_token(lexer, TOKEN_FOR) == false
+      || lexer_skip_token(lexer, TOKEN_OPEN_PAREN) == false)
+    return NULL;
+
+  ASTStatement* init = parse_assignment_statement(lexer);
+  if (lexer_skip_token(lexer, TOKEN_SEMICOLON) == false)
+      return NULL; //TODO: raise syntax error
+  ASTExpression* condition = parse_expression(lexer);
+  if (lexer_skip_token(lexer, TOKEN_SEMICOLON) == false)
+      return NULL; //TODO: raise syntax error
+  ASTStatement* update = parse_assignment_statement(lexer);
+  if (lexer_skip_token(lexer, TOKEN_CLOSE_PAREN) == false)
+      return NULL; //TODO: raise syntax error
+
+  // then_block
+  ASTStatement* then_block = parse_statement(lexer);
+  if (then_block == NULL)
+    return NULL;
+
+  return ast_create_statement_for(init, condition, update, then_block);
 }
 
 
@@ -1002,8 +1021,6 @@ ASTStatement* parse_statement_list(Lexer* lexer)
 ASTProgram* parse_program(Lexer *lexer)
 {
   ASTStatement* body = parse_statement_list(lexer);
-  if (body == NULL)
-    return NULL;
   return ast_create_program(body);
 }
 

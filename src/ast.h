@@ -176,10 +176,10 @@ struct ASTIfStatement_t
 
 struct ASTForStatement_t
 {
-  ASTAssignment* init;
-  ASTExpression* condition;
-  ASTAssignment* update;
-  ASTStatement* body;
+  ASTStatement* init;         // Assignment
+  ASTExpression* condition;   // Comparison expression
+  ASTStatement* update;       // ASsigment
+  ASTStatement* body;         // Statement list
 };
 
 struct ASTWhileStatement_t
@@ -256,7 +256,7 @@ ASTExpression* ast_create_expression_function_call(const char* identifier, ASTEx
 
 ASTStatement* ast_create_statement_assignment(const char* identifier, ASTExpression* expression);
 ASTStatement* ast_create_statement_if(ASTExpression* condition, ASTStatement* if_branch, ASTStatement* else_branch);
-ASTStatement* ast_create_statement_for(ASTAssignment* init, ASTExpression* condition, ASTAssignment* update, ASTStatement* body);
+ASTStatement* ast_create_statement_for(ASTStatement* init, ASTExpression* condition, ASTStatement* update, ASTStatement* body);
 ASTStatement* ast_create_statement_while(ASTExpression* condition, ASTStatement* body);
 ASTStatement* ast_create_statement_return(ASTExpression* expression);
 ASTStatement* ast_create_statement_function_decl(const char* identifier, ASTStatement* params, ASTStatement* body);

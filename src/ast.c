@@ -6,7 +6,7 @@
 #define strdup strdup_safe
 
 #define AST_CREATE_NODE(T) (T*)(malloc(sizeof(T)))
-#define EXPRESSION_IS_LITERAL(e) ((e) != NULL && ((e)->type == EXPR_FACTOR || (e)->type == EXPR_UNARY || (e)->type == EXPR_LITERAL_INT || (e)->type == EXPR_LITERAL_FLOAT || (e)->type == EXPR_LITERAL_STRING))
+#define EXPRESSION_IS_LITERAL_OR_LVALUE(e) ((e) != NULL && ((e)->type == EXPR_FACTOR || (e)->type == EXPR_UNARY || (e)->type == EXPR_LITERAL_INT || (e)->type == EXPR_LITERAL_FLOAT || (e)->type == EXPR_LITERAL_STRING || (e)->type == EXPR_LVALUE))
 
 void ast_destroy_expression(ASTExpression* expression)
 {
@@ -68,9 +68,9 @@ void ast_destroy_statement(ASTStatement* statement)
       ast_destroy_statement(statement->as.if_stmt.else_branch);
       break;
     case AST_STATEMENT_FOR:
-      ast_destroy_expression(statement->as.for_stmt.init->expression);
-      ast_destroy_expression(statement->as.for_stmt.update->expression);
+      ast_destroy_statement(statement->as.for_stmt.init);
       ast_destroy_expression(statement->as.for_stmt.condition);
+      ast_destroy_statement(statement->as.for_stmt.update);
       break;
     case AST_STATEMENT_WHILE:
       ast_destroy_expression(statement->as.while_stmt.condition);
@@ -140,8 +140,8 @@ void ast_destroy_expression_list(ASTExpression* list)
 
 ASTExpression* ast_create_expression_term(ASTExpression* left, ASTTermOperator op, ASTExpression* right)
 {
-  ASSERT(left != NULL && (left->type == EXPR_TERM ||left->type == EXPR_FACTOR || EXPRESSION_IS_LITERAL(left)));
-  ASSERT(right == NULL || (right->type == EXPR_TERM || right->type == EXPR_FACTOR || EXPRESSION_IS_LITERAL(right)));
+  ASSERT(left != NULL && (left->type == EXPR_TERM ||left->type == EXPR_FACTOR || EXPRESSION_IS_LITERAL_OR_LVALUE(left)));
+  ASSERT(right == NULL || (right->type == EXPR_TERM || right->type == EXPR_FACTOR || EXPRESSION_IS_LITERAL_OR_LVALUE(right)));
 
   ASTExpression* expr = AST_CREATE_NODE(ASTExpression);
   expr->type = EXPR_TERM;
@@ -154,8 +154,8 @@ ASTExpression* ast_create_expression_term(ASTExpression* left, ASTTermOperator o
 
 ASTExpression* ast_create_expression_factor(ASTExpression* left, ASTFactorOperator op, ASTExpression* right)
 {
-  ASSERT(left != NULL && (left->type == EXPR_TERM || EXPRESSION_IS_LITERAL(left)));
-  ASSERT(right != NULL && (right->type == EXPR_TERM || EXPRESSION_IS_LITERAL(right)));
+  ASSERT(left != NULL && (left->type == EXPR_TERM || EXPRESSION_IS_LITERAL_OR_LVALUE(left)));
+  ASSERT(right != NULL && (right->type == EXPR_TERM || EXPRESSION_IS_LITERAL_OR_LVALUE(right)));
 
   ASTExpression* expr = AST_CREATE_NODE(ASTExpression);
   expr->type = EXPR_FACTOR;
@@ -168,7 +168,7 @@ ASTExpression* ast_create_expression_factor(ASTExpression* left, ASTFactorOperat
 
 ASTExpression* ast_create_expression_unary(ASTUnaryOperator op, ASTExpression* expression) 
 {
-  ASSERT(expression != NULL && (expression->type == EXPR_TERM || EXPRESSION_IS_LITERAL(expression)));
+  ASSERT(expression != NULL && (expression->type == EXPR_TERM || EXPRESSION_IS_LITERAL_OR_LVALUE(expression)));
 
   ASTExpression* expr = AST_CREATE_NODE(ASTExpression);
   expr->type = EXPR_UNARY;
@@ -180,8 +180,8 @@ ASTExpression* ast_create_expression_unary(ASTUnaryOperator op, ASTExpression* e
 
 ASTExpression* ast_create_expression_logical(ASTExpression* left, ASTLogicalOperator op, ASTExpression* right) 
 {
-  ASSERT(left != NULL && (left->type == EXPR_TERM || EXPRESSION_IS_LITERAL(left)));
-  ASSERT(right != NULL && (right->type == EXPR_TERM || EXPRESSION_IS_LITERAL(right)));
+  ASSERT(left != NULL && (left->type == EXPR_TERM || EXPRESSION_IS_LITERAL_OR_LVALUE(left)));
+  ASSERT(right != NULL && (right->type == EXPR_TERM || EXPRESSION_IS_LITERAL_OR_LVALUE(right)));
   ASTExpression* expr = AST_CREATE_NODE(ASTExpression);
   expr->type = EXPR_LOGICAL;
   expr->as.logical_expr.left = left;
@@ -280,7 +280,7 @@ ASTStatement* ast_create_statement_if(ASTExpression* condition, ASTStatement* if
   return stmt;
 }
 
-ASTStatement* ast_create_statement_for(ASTAssignment* init, ASTExpression* condition, ASTAssignment* update, ASTStatement* body) 
+ASTStatement* ast_create_statement_for(ASTStatement* init, ASTExpression* condition, ASTStatement* update, ASTStatement* body) 
 {
   ASTStatement* stmt = AST_CREATE_NODE(ASTStatement);
   stmt->type = AST_STATEMENT_FOR;
