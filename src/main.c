@@ -26,12 +26,12 @@ int main_ast(int argc, char** argv)
 
   // assignment
   ASTStatement* assignment = ast_create_statement_assignment("a", addition);
-  ASTStatementList* stmt_list = ast_create_statement_list(2);
+  ASTStatement* stmt_list = ast_create_statement_list(2);
   ASTStatement* print_statement = ast_create_statement_print(ast_create_expression_lvalue("a"));
-  ast_statement_list_add(stmt_list, assignment);
-  ast_statement_list_add(stmt_list, print_statement);
+  ast_statement_list_add(&stmt_list->as.block_stmt, assignment);
+  ast_statement_list_add(&stmt_list->as.block_stmt, print_statement);
 
-  ASTProgram* program = ast_create_program(stmt_list);
+  ASTProgram* program = ast_create_program(&stmt_list->as.block_stmt);
 
   // Evaluate the program
   int exit_code = eval_program(&table, program);

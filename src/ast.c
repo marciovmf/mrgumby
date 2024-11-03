@@ -79,8 +79,8 @@ void ast_destroy_statement(ASTStatement* statement)
       ast_destroy_expression(statement->as.return_expr);
       break;
     case AST_STATEMENT_FUNCTION_DECL:
-      ast_destroy_statement_list(statement->as.function_decl.body);
-      ast_destroy_statement_list(statement->as.function_decl.params);
+      //ast_destroy_statement_list(statement->as.function_decl.body);
+      //ast_destroy_statement_list(statement->as.function_decl.params);
       break;
     case AST_STATEMENT_PRINT:
       ast_destroy_expression(statement->as.print_expr);
@@ -105,16 +105,18 @@ void ast_destroy_program(ASTProgram* program)
   free(program);
 }
 
-void ast_destroy_statement_list(ASTStatementList* stmt_list)
+void ast_destroy_statement_list(ASTStatement* stmt_list)
 {
+  ASSERT(stmt_list != NULL);
+  ASSERT(stmt_list->type == AST_STATEMENT_BLOCK);
   if (stmt_list == NULL)
     return;
 
-  for (size_t i = 0; i < stmt_list->count; i++)
-    ast_destroy_statement(stmt_list->statements[i]);
 
-  free(stmt_list->statements);
-  free(stmt_list);
+  for (size_t i = 0; i < stmt_list->as.block_stmt.count; i++)
+    ast_destroy_statement(stmt_list->as.block_stmt.statements[i]);
+
+  free(stmt_list->as.block_stmt.statements);
 }
 
 void ast_destroy_expression_list(ASTExpressionList* expr_list)
@@ -286,6 +288,11 @@ ASTStatement* ast_create_statement_assignment(const char* identifier, ASTExpress
 
 ASTStatement* ast_create_statement_if(ASTExpression* condition, ASTStatement* if_branch, ASTStatement* else_branch) 
 {
+  ASSERT(if_branch != NULL);
+  ASSERT(if_branch->type == AST_STATEMENT_BLOCK);
+  if (else_branch)
+    ASSERT(else_branch->type != AST_STATEMENT_BLOCK);
+
   ASTStatement* stmt = AST_CREATE_NODE(ASTStatement);
   stmt->type = AST_STATEMENT_IF;
   stmt->as.if_stmt.condition = condition;
@@ -369,15 +376,15 @@ ASTStatement* ast_create_statement_function_call(ASTExpression* func_call_expr)
 // Helper function to create a new block
 //
 
-ASTStatementList* ast_create_statement_list(size_t capacity)
+ASTStatement* ast_create_statement_list(size_t capacity)
 {
   ASSERT(capacity > 0);
 
-  ASTStatementList* stmt_list = AST_CREATE_NODE(ASTStatementList);
-  stmt_list->count = 0;
-  stmt_list->capacity = capacity;
-  stmt_list->statements = (ASTStatement**)(malloc(sizeof(ASTStatement*) * capacity));
-  return stmt_list;
+  ASTStatement* stmt = AST_CREATE_NODE(ASTStatement);
+  stmt->as.block_stmt.count = 0;
+  stmt->as.block_stmt.capacity = capacity;
+  stmt->as.block_stmt.statements = (ASTStatement**)(malloc(sizeof(ASTStatement*) * capacity));
+  return stmt;
 }
 
 size_t ast_statement_list_add(ASTStatementList* stmt_list, ASTStatement* statement)

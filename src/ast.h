@@ -84,6 +84,7 @@ typedef enum ASTStatementType_e
   AST_STATEMENT_WHILE,           // While loop
   AST_STATEMENT_RETURN,          // Return statement
   AST_STATEMENT_FUNCTION_DECL,   // Function declaration
+  AST_STATEMENT_BLOCK,           // Block of statements
   AST_STATEMENT_PRINT,           // Print statement
   AST_STATEMENT_INPUT,           // Input statement
   AST_STATEMENT_FUNCTION_CALL,   // Function call
@@ -218,6 +219,13 @@ struct ASTFunctionDecl_t
   ASTBlock*         body;
 };
 
+struct ASTStatementList_t 
+{
+  ASTStatement**  statements; // Array of pointers to ASTStatements
+  size_t          count;      // Number of statements in the array
+  size_t          capacity;   // Capacity of the array
+};
+
 struct ASTStatement_t
 {
   ASTStatementType type; // Statement type
@@ -227,6 +235,7 @@ struct ASTStatement_t
     ASTIfStatement      if_stmt;        // If statement
     ASTForStatement     for_stmt;       // For loop
     ASTWhileStatement   while_stmt;     // While statement
+    ASTStatementList    block_stmt;     // statement list
     ASTFunctionDecl     function_decl;  // Function declaration
     ASTExpression*      return_expr;    // Return expression
     ASTExpression*      print_expr;     // Print statement
@@ -234,13 +243,6 @@ struct ASTStatement_t
     ASTExpression*      func_call_expr; // Function call
     ASTBlock* block;                  // Block of statements
   } as;
-};
-
-struct ASTStatementList_t 
-{
-  ASTStatement**  statements; // Array of pointers to ASTStatements
-  size_t          count;      // Number of statements in the array
-  size_t          capacity;   // Capacity of the array
 };
 
 
@@ -292,14 +294,14 @@ ASTExpression* ast_create_expression_function_call(const char* identifier, ASTEx
 //
 
 ASTProgram*       ast_create_program(ASTStatementList* statements);
-ASTStatementList* ast_create_statement_list(size_t capacity);
+ASTStatement*     ast_create_statement_list(size_t capacity);
 size_t            ast_statement_list_add(ASTStatementList* stmt_list, ASTStatement* statement);
 
 
 void ast_destroy_expression(ASTExpression* expression);
 void ast_destroy_statement(ASTStatement* statement);
 void ast_destroy_program(ASTProgram* program);
-void ast_destroy_statement_list(ASTStatementList* stmt_list);
+void ast_destroy_statement_list(ASTStatement* stmt_list);
 void ast_destroy_expression_list(ASTExpressionList* list);
 
 #endif // AST_H

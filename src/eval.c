@@ -299,10 +299,10 @@ ExpressionValue eval_statement(SymbolTable* table, ASTStatement* stmt)
 
         if (condition.type != 0) 
         {
-          eval_statement(table, stmt->as.if_stmt.if_branch);
+          //eval_statement(table, stmt->as.if_stmt.if_branch);
         } else if (stmt->as.if_stmt.else_branch) 
         {
-          eval_statement(table, stmt->as.if_stmt.else_branch);
+          //eval_statement(table, stmt->as.if_stmt.else_branch);
         }
         return runtime_value_create_void();
         break;
