@@ -44,12 +44,13 @@ typedef enum TokenType_e
   TOKEN_LITERAL_INT,        // [0-9]+
   TOKEN_LITERAL_FLOAT,      // [0-9]*"."[0-9]+
   TOKEN_LITERAL_STRING,     // "double quote string!"
+  TOKEN_LITERAL_BOOL,       // true or false literal
   TOKEN_EOF,                // End of file/stream
   TOKEN_COUNT_
 } TokenType;
 
 #define PARSER_MAX_TOKEN_LENGTH 100
-typedef struct
+typedef struct Token_t
 {
   TokenType type;
   char value[PARSER_MAX_TOKEN_LENGTH];
@@ -57,15 +58,14 @@ typedef struct
 
 /* Lexer */
 
-
 typedef struct Lexer_t
 {
-  char *buffer;        // Buffer containing the file contents
-  char current_char;   // Current character
-  char next_char;      // Next character
-  size_t position;     // Current position in the buffer
-  int line;            // Current line number
-  int column;          // Current column number
+  char    *buffer;      // Buffer containing the file contents
+  char    current_char; // Current character
+  char    next_char;    // Next character
+  size_t  position;     // Current position in the buffer
+  int     line;         // Current line number
+  int     column;       // Current column number
 } Lexer;
 
 

@@ -31,33 +31,33 @@ typedef struct ASTProgram_t               ASTProgram;
 
 typedef enum ASTFactorOperator_e
 {
-  OP_ADD,        // Addition
-  OP_SUBTRACT,   // Subtraction
+  OP_ADD          = 0,  // Addition
+  OP_SUBTRACT     = 1,  // Subtraction
 } ASTFactorOperator;
 
 typedef enum ASTTermOperator_e
 {
-  OP_MULTIPLY,   // Multiplication
-  OP_DIVIDE,     // Division
-  OP_MOD,        // Modulus
+  OP_MULTIPLY     = 2,  // Multiplication
+  OP_DIVIDE       = 3,  // Division
+  OP_MOD          = 4,  // Modulus
   //OP_ASSIGN      // Assignment
 } ASTTermOperator;
 
 typedef enum ASTUnaryOperator_e
 {
-  OP_UNARY_PLUS,   // Unary plus
-  OP_UNARY_MINUS,  // Unary minus
-  OP_LOGICAL_NOT   // Logical NOT
+  OP_UNARY_PLUS   = 5,  // Unary plus
+  OP_UNARY_MINUS  = 6,  // Unary minus
+  OP_LOGICAL_NOT  = 7,  // Logical NOT
 } ASTUnaryOperator;
 
 typedef enum ASTComparisonOperator_e
 {
-  OP_LT,    // Less than
-  OP_GT,    // Greater than
-  OP_LTE,   // Less than or equal to
-  OP_GTE,   // Greater than or equal to
-  OP_EQ,    // Equal to
-  OP_NEQ    // Not equal to
+  OP_LT           = 9,  // Less than
+  OP_GT           = 10, // Greater than
+  OP_LTE          = 11, // Less than or equal to
+  OP_GTE          = 12, // Greater than or equal to
+  OP_EQ           = 13, // Equal to
+  OP_NEQ          = 14, // Not equal to
 } ASTComparisonOperator;
 
 typedef enum ASTLogicalOperator_e
@@ -83,17 +83,18 @@ typedef enum ASTStatementType_e
 
 typedef enum ASTExpressionType_e
 {
-  EXPR_VOID,               // Void expression
-  EXPR_UNARY,              // Unary expression
-  EXPR_COMPARISON,         // Comparison expression
-  EXPR_LOGICAL,            // Logical expression
-  EXPR_FACTOR,             // Factor for high precedence
-  EXPR_TERM,               // Term for low precedence
-  EXPR_LITERAL_INT,        // Integer literal
-  EXPR_LITERAL_FLOAT,      // Floating-point literal
-  EXPR_LITERAL_STRING,     // String literal
-  EXPR_LVALUE,             // Variable reference
-  EXPR_FUNCTION_CALL       // Function call
+  EXPR_VOID           = 0,      // Void expression
+  EXPR_UNARY          = 1,      // Unary expression
+  EXPR_COMPARISON     = 2,      // Comparison expression
+  EXPR_LOGICAL        = 3,      // Logical expression
+  EXPR_FACTOR         = 4,      // Factor for high precedence
+  EXPR_TERM           = 5,      // Term for low precedence
+  EXPR_LITERAL_BOOL   = 6,      // Bool literal
+  EXPR_LITERAL_INT    = 7,      // Integer literal
+  EXPR_LITERAL_FLOAT  = 8,      // Floating-point literal
+  EXPR_LITERAL_STRING = 9,      // String literal
+  EXPR_LVALUE         = 10,     // Variable reference
+  EXPR_FUNCTION_CALL  = 11,     // Function call
 } ASTExpressionType;
 
 struct ASTUnaryExpression_t
@@ -211,10 +212,7 @@ struct ASTStatement_t
     ASTWhileStatement   while_stmt;     // While statement
     ASTFunctionDecl     function_decl;  // Function declaration
     ASTStatement*       block_stmt;     // statement list
-    ASTExpression*      return_expr;    // Return expression
-    ASTExpression*      print_expr;     // Print statement
-    ASTExpression*      input_expr;     // Input statement
-    ASTExpression*      func_call_expr; // Function call
+    ASTExpression*      expression;     // Return expression , Function call
   } as;
 
   ASTStatement* next;   // Next statement when this node is part of a statement list
@@ -235,6 +233,7 @@ ASTExpression* ast_create_expression_factor(ASTExpression* left, ASTFactorOperat
 ASTExpression* ast_create_expression_unary(ASTUnaryOperator op, ASTExpression* expression);
 ASTExpression* ast_create_expression_logical(ASTExpression* left, ASTLogicalOperator op, ASTExpression* right);
 ASTExpression* ast_create_expression_comparison(ASTExpression* left, ASTComparisonOperator op, ASTExpression* right);
+ASTExpression* ast_create_expression_literal_bool(bool value);
 ASTExpression* ast_create_expression_literal_int(int value);
 ASTExpression* ast_create_expression_literal_float(double value);
 ASTExpression* ast_create_expression_literal_string(const char* value);

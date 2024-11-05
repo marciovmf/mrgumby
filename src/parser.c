@@ -73,9 +73,6 @@ static ASTExpression* parse_term(Lexer* lexer);
 static ASTExpression* parse_expression(Lexer* lexer);
 static ASTStatement* parse_statement(Lexer *lexer);
 static ASTStatement* parse_statement_list(Lexer* lexer);
-static bool parse_lvalue(Lexer* lexer);
-
-
 
 
 static void lexer_advance(Lexer *lexer)
@@ -141,6 +138,7 @@ static void lexer_skip_whitespace(Lexer *lexer)
 
 static Token lexer_get_identifier(Lexer *lexer)
 {
+
   Token token;
   int i = 0;
 
@@ -157,6 +155,8 @@ static Token lexer_get_identifier(Lexer *lexer)
   else if (strcmp(token.value, "include") == 0) token.type = TOKEN_INCLUDE;
   else if (strcmp(token.value, "return") == 0) token.type = TOKEN_RETURN;
   else if (strcmp(token.value, "while") == 0) token.type = TOKEN_WHILE;
+  else if (strcmp(token.value, "true") == 0) token.type = TOKEN_LITERAL_BOOL;
+  else if (strcmp(token.value, "false") == 0) token.type = TOKEN_LITERAL_BOOL;
   //else if (strcmp(token.value, "function") == 0) token.type = TOKEN_FUNCTION;
   //else if (strcmp(token.value, "endwhile") == 0) token.type = TOKEN_ENDWHILE;
   else token.type = TOKEN_IDENTIFIER;
@@ -186,7 +186,6 @@ static Token lexer_get_literal_string(Lexer *lexer)
       out.type = TOKEN_LITERAL_STRING;    
     } else
     {
-      report_error(lexer, "Unmatched string literal");
       out.type = TOKEN_ERROR;
     }
   } else
@@ -296,7 +295,7 @@ Token lexer_get_next_token_(Lexer *lexer, bool suppress_errors)
   }
   else if (lexer->current_char == '>')
   {
-    token.type = TOKEN_OP_LT;
+    token.type = TOKEN_OP_GT;
     token.value[0] = lexer->current_char;
     token.value[1] = '\0';
     lexer_advance(lexer);
@@ -455,10 +454,7 @@ static bool lexer_require_token(Lexer* lexer, TokenType expected_type, Token* ou
 
 
 /*
-* Parses an Argument List
-*
 * <ArgList> -> [ <Expression> ( "," <Expression> )* ]
-* 
 */
 static ASTExpression* parse_arg_list(Lexer* lexer)
 {
@@ -515,9 +511,7 @@ static ASTExpression* parse_function_call(Lexer* lexer)
 
 
 /*
- * Parses a Factor
- *
- * <Factor> -> ( int_literal | float_literal | string_literal | <lvalue> | <FunctionCall> | "(" <Expression> ")" )
+ * <Factor> -> ( int_literal | float_literal | string_literal | bool_literal | <lvalue> | <FunctionCall> | "(" <Expression> ")" )
  */ 
 static ASTExpression* parse_factor(Lexer* lexer)
 {
@@ -558,6 +552,14 @@ static ASTExpression* parse_factor(Lexer* lexer)
       return NULL;
     return ast_create_expression_literal_int(atoi(literal_float.value));
   }
+  else if (look_ahead_token1.type == TOKEN_LITERAL_BOOL)
+  {
+    Token literal_bool;
+    if (!lexer_require_token(lexer, TOKEN_LITERAL_BOOL, &literal_bool))
+      return NULL;
+
+    return ast_create_expression_literal_bool(literal_bool.value[0] == 't');
+  }
   else if (look_ahead_token1.type == TOKEN_IDENTIFIER)
   {
     if (look_ahead_token2.type == TOKEN_OPEN_PAREN)
@@ -579,10 +581,7 @@ static ASTExpression* parse_factor(Lexer* lexer)
 
 
 /*
- * Parses a UnaryExpression
- *
  * <UnaryExpression> -> [ ( "+" | "-" )] ] <Factor>
- * 
  */ 
 static ASTExpression* parse_unary_expression(Lexer* lexer)
 {
@@ -609,10 +608,7 @@ static ASTExpression* parse_unary_expression(Lexer* lexer)
 
 
 /*
- * Parses a Term
- *
  * <Term> -> <UnaryExpression> ( ( "*" | "/" | "%" ) <UnaryExpression> )*
- * 
  */ 
 static ASTExpression* parse_term(Lexer* lexer)
 {
@@ -646,10 +642,7 @@ static ASTExpression* parse_term(Lexer* lexer)
 
 
 /*
- * Parses an NumExpression
- *
  * <NumExpression> -> <Term> ( ( "+" | "-" ) <Term> )*
- * 
  */ 
 static ASTExpression* parse_num_expression(Lexer* lexer)
 {
@@ -681,20 +674,6 @@ static ASTExpression* parse_num_expression(Lexer* lexer)
 
 
 /*
- * Parses an Lvalue
- *
- * <lvalue> -> identifier
- */ 
-static bool parse_lvalue(Lexer* lexer)
-{
-  Token identifier;
-  return lexer_require_token(lexer, TOKEN_IDENTIFIER, &identifier);
-}
-
-
-/*
- * Parses an assignment
- *
  * <AssignmentStatement> -> <lvalue> "=" <Expression>
  */
 static ASTStatement* parse_assignment_statement(Lexer* lexer)
@@ -714,8 +693,6 @@ static ASTStatement* parse_assignment_statement(Lexer* lexer)
 
 
 /*
- * Parses an 'if' statement
- *
  * <ifStatement> -> "if" "(" <Expression> ")" <Statement> [ "else" <Statement> ]
  */
 static ASTStatement* parse_if_statement(Lexer* lexer)
@@ -727,7 +704,7 @@ static ASTStatement* parse_if_statement(Lexer* lexer)
   ASTExpression* condition = parse_expression(lexer);
   if (condition == NULL)
     return NULL;
-  
+
   if (lexer_skip_token(lexer, TOKEN_CLOSE_PAREN) == false)
     return NULL;
 
@@ -751,8 +728,6 @@ static ASTStatement* parse_if_statement(Lexer* lexer)
 
 
 /*
- * Parses a 'while' statement
- *
  * <WhileStatement> -> "while" "(" <Expression> ")" <Statement> 
  */
 static ASTStatement* parse_while_statement(Lexer* lexer)
@@ -764,22 +739,26 @@ static ASTStatement* parse_while_statement(Lexer* lexer)
   ASTExpression* condition = parse_expression(lexer);
   if (condition == NULL)
     return NULL;
-  
+
   if (lexer_skip_token(lexer, TOKEN_CLOSE_PAREN) == false)
+  {
+    ast_destroy_expression(condition);
     return NULL;
+  }
 
   // then_block
   ASTStatement* then_block = parse_statement(lexer);
   if (then_block == NULL)
+  {
+    ast_destroy_expression(condition);
     return NULL;
+  }
 
   return ast_create_statement_while(condition, then_block);
 }
 
 
 /*
- * Parses a 'for' statement
- *
  * <ForStatement> -> "for" "(" [<AssignmentStatement>] ";" [<expression>] ";" [<AssignmentStatement>] ")" <Statement> 
  */
 static ASTStatement* parse_for_statement(Lexer* lexer)
@@ -791,26 +770,43 @@ static ASTStatement* parse_for_statement(Lexer* lexer)
 
   ASTStatement* init = parse_assignment_statement(lexer);
   if (lexer_skip_token(lexer, TOKEN_SEMICOLON) == false)
-      return NULL; //TODO: raise syntax error
+  {
+    ast_destroy_statement(init);
+    return NULL;
+  }
+
   ASTExpression* condition = parse_expression(lexer);
   if (lexer_skip_token(lexer, TOKEN_SEMICOLON) == false)
-      return NULL; //TODO: raise syntax error
+  {
+    ast_destroy_statement(init);
+    ast_destroy_expression(condition);
+    return NULL;
+  }
+
   ASTStatement* update = parse_assignment_statement(lexer);
   if (lexer_skip_token(lexer, TOKEN_CLOSE_PAREN) == false)
-      return NULL; //TODO: raise syntax error
+  {
+    ast_destroy_statement(init);
+    ast_destroy_expression(condition);
+    ast_destroy_statement(update);
+    return NULL;
+  }
 
   // then_block
   ASTStatement* then_block = parse_statement(lexer);
   if (then_block == NULL)
+  {
+    ast_destroy_statement(init);
+    ast_destroy_expression(condition);
+    ast_destroy_statement(update);
     return NULL;
+  }
 
   return ast_create_statement_for(init, condition, update, then_block);
 }
 
 
 /*
- * Parses a ReturnStatement
- *
  * <ReturnStatement> -> "return" [ <Expression> ]
  */
 static ASTStatement* parse_return_statement(Lexer* lexer)
@@ -823,8 +819,6 @@ static ASTStatement* parse_return_statement(Lexer* lexer)
 
 
 /*
- * Parses a FunctionBody
- *
  * <FunctionBody> -> "(" <ParamList> ")" <Statement>
  */
 static bool parse_function_body(Lexer* lexer)
@@ -835,8 +829,6 @@ static bool parse_function_body(Lexer* lexer)
 
 
 /*
- * Parses a FunctionDeclStatement
- *
  * <FunctionDeclStatement> -> "function" identifier "(" [ identifier ( "," identifier )* ] ")" <FunctionBody>
  */
 static bool parse_function_declaration_statement(Lexer* lexer)
@@ -847,10 +839,7 @@ static bool parse_function_declaration_statement(Lexer* lexer)
 
 
 /*
- * Parses an Expression
- *
  * <Expression> -> <NumExpression> [ ( "<" | ">" | "<=" | ">=" | "==" | "!=" ) <NumExpression> ]
- * 
  */ 
 static ASTExpression* parse_expression(Lexer* lexer)
 {
@@ -892,10 +881,7 @@ static ASTExpression* parse_expression(Lexer* lexer)
 
 
 /*
- * Parses a Statement
- *
- * <Statement> -> ( <FunctionCall> | <InputStatement> | <ReturnStatement> | <AssignmentStatement>
- *  <FunctionDeclStatement> | <IfStatement> | <ForStatement> | <WhileStatement> | "{" <StatementList> "}")
+ * <Statement> -> ( <FunctionCall> | <InputStatement> | <ReturnStatement> | <AssignmentStatement> <FunctionDeclStatement> | <IfStatement> | <ForStatement> | <WhileStatement> | "{" <StatementList> "}")
  */
 static ASTStatement* parse_statement(Lexer *lexer)
 {
@@ -939,7 +925,7 @@ static ASTStatement* parse_statement(Lexer *lexer)
         }
         break;
       }
-   
+
     case TOKEN_RETURN:
       {
         ASTStatement* statement = parse_return_statement(lexer);
@@ -947,13 +933,13 @@ static ASTStatement* parse_statement(Lexer *lexer)
           return statement;
         break;
       }
-   
+
     case TOKEN_FOR:
       {
         return parse_for_statement(lexer);
         break;
       }
-   
+
     case TOKEN_WHILE:
       {
         return parse_while_statement(lexer);
@@ -976,8 +962,6 @@ static ASTStatement* parse_statement(Lexer *lexer)
 
 
 /*
- * Parses a StatementList
- *
  * <StatementList> -> <Statement>; [ <StatementList> ]
  */
 static ASTStatement* parse_statement_list(Lexer* lexer)
@@ -1015,8 +999,6 @@ void lexer_init(Lexer *lexer, const char *buffer)
 }
 
 /*
- * Parses a program
- *
  * <Program> -> ( <StatementList> )*
  */
 ASTProgram* parse_program(Lexer *lexer)

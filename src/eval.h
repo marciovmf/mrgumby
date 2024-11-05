@@ -17,7 +17,8 @@
 // Symbol Table
 //
 
-#define MAX_VARS 100
+#define MAX_SYMBOLS       100
+#define MAX_FUNCTION_ARGS 16
 
 /**
  * @enum RuntimeError
@@ -45,8 +46,24 @@ typedef struct ExpressionValue_t
   {
     double number_value;              // Numeric value if the expression is a number
     char* string_value;               // String value if the expression is a string.
+    
   } as;
 } ExpressionValue;
+
+
+typedef enum SymbolType_t
+{
+  SYMBOL_VARAIBLE = 0,
+  SYMBOL_FUNCTION = 1,
+} SymbolType;
+
+
+typedef struct Function_t
+{
+  ASTExpressionType args[MAX_FUNCTION_ARGS];
+  int               num_args;
+  ExpressionValue (*function_ptr)(int, ExpressionValue*);
+} Function;
 
 /**
  * @struct Symbol
@@ -54,10 +71,15 @@ typedef struct ExpressionValue_t
  *
  * Stores the identifier of the variable and its evaluated ExpressionValue.
  */
-typedef struct 
+typedef struct Symbol_t
 {
-  Smallstr identifier;                // Variable name.
-  ExpressionValue value;              // Current value of the variable.
+  SymbolType    type;
+  Smallstr      identifier;           // Symbol name.
+  union
+  {
+    ExpressionValue variable;         // Current value of the variable.
+    Function        function;
+  } as;
 } Symbol;
 
 /**
@@ -66,9 +88,9 @@ typedef struct
  *
  * Manages the variables and their values within the current scope.
  */
-typedef struct 
+typedef struct SymbolTable_t
 {
-  Symbol vars[MAX_VARS];              // Array of symbols (variables).
+  Symbol entry[MAX_SYMBOLS];           // Array of symbols (variables).
   int count;                          // Number of variables currently stored.
 } SymbolTable;
 
@@ -118,6 +140,15 @@ ExpressionValue eval_statement(SymbolTable* table, ASTStatement* stmt);
  * @return Exit code or runtime status of the program execution.
  */
 int eval_program(SymbolTable* table, ASTProgram* program);
+
+
+ExpressionValue runtime_value_create_bool(bool value);
+ExpressionValue runtime_value_create_int(double value);
+ExpressionValue runtime_value_create_float(double value);
+ExpressionValue runtime_value_create_string(char* value);
+ExpressionValue runtime_value_create_void(void);
+
+
 
 
 #endif  // INTERPRETER_H

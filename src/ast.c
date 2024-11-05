@@ -77,20 +77,20 @@ void ast_destroy_statement(ASTStatement* statement)
       ast_destroy_statement(statement->as.while_stmt.body);
       break;
     case AST_STATEMENT_RETURN:
-      ast_destroy_expression(statement->as.return_expr);
+      ast_destroy_expression(statement->as.expression);
       break;
     case AST_STATEMENT_FUNCTION_DECL:
       ast_destroy_statement_list(statement->as.function_decl.body);
       ast_destroy_statement_list(statement->as.function_decl.params);
       break;
     case AST_STATEMENT_FUNCTION_CALL:
-      ast_destroy_expression_list(statement->as.func_call_expr);
+      ast_destroy_expression_list(statement->as.expression);
       break;
     case AST_STATEMENT_BLOCK:
       ast_destroy_statement_list(statement->as.block_stmt);
       break;
     case AST_STATEMENT_PRINT:
-      ast_destroy_expression(statement->as.print_expr);
+      ast_destroy_expression(statement->as.expression);
       break;
     case AST_STATEMENT_INPUT: break;
     case AST_STATEMENT_BREAK: break;
@@ -202,6 +202,15 @@ ASTExpression* ast_create_expression_comparison(ASTExpression* left, ASTComparis
   return expr;
 }
 
+ASTExpression* ast_create_expression_literal_bool(bool value)
+{
+  ASTExpression* expr = AST_CREATE_NODE(ASTExpression);
+  expr->type = EXPR_LITERAL_BOOL;
+  expr->as.number_literal = (int) value;
+  expr->next = NULL;
+  return expr;
+}
+
 ASTExpression* ast_create_expression_literal_int(int value) 
 {
   ASTExpression* expr = AST_CREATE_NODE(ASTExpression);
@@ -306,7 +315,7 @@ ASTStatement* ast_create_statement_return(ASTExpression* expression)
 {
   ASTStatement* stmt = AST_CREATE_NODE(ASTStatement);
   stmt->type = AST_STATEMENT_RETURN;
-  stmt->as.return_expr = expression;
+  stmt->as.expression = expression;
   stmt->next = NULL;
   return stmt;
 }
@@ -326,7 +335,7 @@ ASTStatement* ast_create_statement_print(ASTExpression* expression)
 {
   ASTStatement* stmt = AST_CREATE_NODE(ASTStatement);
   stmt->type = AST_STATEMENT_PRINT;
-  stmt->as.print_expr = expression;
+  stmt->as.expression = expression;
   stmt->next = NULL;
   return stmt;
 }
@@ -335,7 +344,7 @@ ASTStatement* ast_create_statement_input(const char* identifier)
 {
   ASTStatement* stmt = AST_CREATE_NODE(ASTStatement);
   stmt->type = AST_STATEMENT_INPUT;
-  stmt->as.input_expr = ast_create_expression_lvalue(identifier);
+  stmt->as.expression = ast_create_expression_lvalue(identifier);
   stmt->next = NULL;
   return stmt;
 }
@@ -355,7 +364,7 @@ ASTStatement* ast_create_statement_function_call(ASTExpression* func_call_expr)
 
   ASTStatement* stmt = AST_CREATE_NODE(ASTStatement);
   stmt->type = AST_STATEMENT_FUNCTION_CALL;
-  stmt->as.func_call_expr = func_call_expr;
+  stmt->as.expression = func_call_expr;
   stmt->next = NULL;
   return stmt;
 }
