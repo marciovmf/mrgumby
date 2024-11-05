@@ -6,7 +6,7 @@
 #define strdup strdup_safe
 
 #define AST_CREATE_NODE(T) (T*)(malloc(sizeof(T)))
-#define EXPRESSION_IS_LITERAL_OR_LVALUE(e) ((e) != NULL && ((e)->type == EXPR_FACTOR || (e)->type == EXPR_UNARY || (e)->type == EXPR_LITERAL_INT || (e)->type == EXPR_LITERAL_FLOAT || (e)->type == EXPR_LITERAL_STRING || (e)->type == EXPR_LVALUE))
+#define EXPRESSION_IS_LITERAL_OR_LVALUE(e) ((e) != NULL && ((e)->type == EXPR_FACTOR || (e)->type == EXPR_UNARY || (e)->type == EXPR_LITERAL_BOOL || (e)->type == EXPR_LITERAL_INT || (e)->type == EXPR_LITERAL_FLOAT || (e)->type == EXPR_LITERAL_STRING || (e)->type == EXPR_LVALUE))
 
 void ast_destroy_expression(ASTExpression* expression)
 {
@@ -168,7 +168,7 @@ ASTExpression* ast_create_expression_factor(ASTExpression* left, ASTFactorOperat
 
 ASTExpression* ast_create_expression_unary(ASTUnaryOperator op, ASTExpression* expression) 
 {
-  ASSERT(expression != NULL && (expression->type == EXPR_TERM || EXPRESSION_IS_LITERAL_OR_LVALUE(expression)));
+  ASSERT(expression != NULL); 
 
   ASTExpression* expr = AST_CREATE_NODE(ASTExpression);
   expr->type = EXPR_UNARY;

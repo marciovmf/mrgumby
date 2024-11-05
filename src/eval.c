@@ -6,119 +6,50 @@
 // Runtime expression value
 //
 
-
-ExpressionValue runtime_value_create_bool(bool value)
+RTValue runtime_value_create_bool(bool value)
 {
-  return (ExpressionValue){ .type = EXPR_LITERAL_BOOL, .as.number_value = value, .error_code = RUNTIME_SUCCESS };
+  return (RTValue){ .type = RT_VAL_BOOL, .as.number_value = value, .error_code = RT_ERROR_SUCCESS };
 }
 
-ExpressionValue runtime_value_create_int(double value)
+RTValue runtime_value_create_int(int value)
 {
-  return (ExpressionValue){ .type = EXPR_LITERAL_INT, .as.number_value = value, .error_code = RUNTIME_SUCCESS };
+  return (RTValue){ .type = RT_VAL_INT, .as.number_value = value, .error_code = RT_ERROR_SUCCESS };
 }
 
-ExpressionValue runtime_value_create_float(double value)
+RTValue runtime_value_create_float(double value)
 {
-  return (ExpressionValue){ .type = EXPR_LITERAL_FLOAT, .as.number_value = value, .error_code = RUNTIME_SUCCESS};
+  return (RTValue){ .type = RT_VAL_FLOAT, .as.number_value = value, .error_code = RT_ERROR_SUCCESS};
 }
 
-ExpressionValue runtime_value_create_string(char* value)
+RTValue runtime_value_create_string(char* value)
 {
-  return (ExpressionValue){ .type = EXPR_LITERAL_STRING, .as.string_value = value, .error_code = RUNTIME_SUCCESS};
+  return (RTValue){ .type = RT_VAL_STRING, .as.string_value = value, .error_code = RT_ERROR_SUCCESS};
 }
 
-ExpressionValue runtime_value_create_void(void)
+RTValue runtime_value_create_void(void)
 {
-  return (ExpressionValue){ .type = EXPR_VOID, .error_code = RUNTIME_SUCCESS};
+  return (RTValue){ .type = RT_VAL_VOID, .error_code = RT_ERROR_SUCCESS};
 }
 
-inline ExpressionValue runtime_value_create_error(RuntimeError error)
+inline RTValue runtime_value_create_error(RTError error)
 {
-  return (ExpressionValue){ .type = EXPR_VOID, .error_code = error};
+  return (RTValue){ .type = RT_VAL_VOID, .error_code = error};
 }
 
 //
 // Symbol table functions
 //
 
-void symbol_table_init(SymbolTable* table) 
+void symbol_table_init(RTSymbolTable* table) 
 {
   table->count = 0;
 }
 
-void symbol_table_set_variable_bool(SymbolTable* table, const char* identifier, bool value)
+RTSymbol* symbol_table_get_variable(RTSymbolTable* table, const char* identifier) 
 {
   for (int i = 0; i < table->count; i++) 
   {
-    if (strcmp(table->entry[i].identifier.str, identifier) == 0) 
-    {
-      table->entry[i].as.variable  = runtime_value_create_bool(value);
-      return;
-    }
-  }
-  smallstr(&table->entry[table->count].identifier, identifier);
-  table->entry[table->count].type = SYMBOL_VARAIBLE;
-  table->entry[table->count].as.variable = runtime_value_create_bool(value);
-  table->count++;
-}
-
-void symbol_table_set_variable_int(SymbolTable* table, const char* identifier, double value) 
-{
-  for (int i = 0; i < table->count; i++) 
-  {
-    if (strcmp(table->entry[i].identifier.str, identifier) == 0) 
-    {
-      table->entry[i].as.variable = runtime_value_create_int(value);
-      return;
-    }
-  }
-  smallstr(&table->entry[table->count].identifier, identifier);
-  table->entry[table->count].type = SYMBOL_VARAIBLE;
-  table->entry[table->count].as.variable = runtime_value_create_int(value);
-  table->count++;
-}
-
-void symbol_table_set_variable_float(SymbolTable* table, const char* identifier, double value) 
-{
-  for (int i = 0; i < table->count; i++) 
-  {
-    if (strcmp(table->entry[i].identifier.str, identifier) == 0) 
-    {
-      table->entry[i].as.variable = runtime_value_create_float(value);
-      return;
-    }
-  }
-  smallstr(&table->entry[table->count].identifier, identifier);
-  table->entry[table->count].type = SYMBOL_VARAIBLE;
-  table->entry[table->count].as.variable = runtime_value_create_float(value);
-  table->count++;
-}
-
-void symbol_table_set_variable_string(SymbolTable* table, const char* identifier, char* value) 
-{
-  for (int i = 0; i < table->count; i++) 
-  {
-    if (strcmp(table->entry[i].identifier.str, identifier) == 0) 
-    {
-      table->entry[i].as.variable = runtime_value_create_string(value);
-      return;
-    }
-  }
-  // If not found, add a new variable
-  smallstr(&table->entry[table->count].identifier, identifier);
-  table->entry[table->count].type = SYMBOL_VARAIBLE;
-  table->entry[table->count].as.variable = runtime_value_create_string(value);
-  table->count++;
-}
-
-Symbol* symbol_table_get_variable(SymbolTable* table, const char* identifier) 
-{
-  for (int i = 0; i < table->count; i++) 
-  {
-    if (table->entry[i].type != SYMBOL_VARAIBLE)
-      continue;
-
-    if (strcmp(table->entry[i].identifier.str, identifier) == 0) 
+    if (strcmp(table->entry[i].identifier.str, identifier) == 0 && table->entry[i].type == RT_SYMBOL_VARIABLE) 
     {
       return &table->entry[i];
     }
@@ -128,28 +59,94 @@ Symbol* symbol_table_get_variable(SymbolTable* table, const char* identifier)
   return 0;
 }
 
-Symbol* symbol_table_get_function(SymbolTable* table, const char* identifier) 
+RTSymbol* symbol_table_get_function(RTSymbolTable* table, const char* identifier) 
 {
   for (int i = 0; i < table->count; i++) 
   {
-    if (table->entry[i].type != SYMBOL_FUNCTION)
-      continue;
-
-    if (strcmp(table->entry[i].identifier.str, identifier) == 0) 
+    if (strcmp(table->entry[i].identifier.str, identifier) == 0 && table->entry[i].type == RT_SYMBOL_FUNCTION) 
     {
       return &table->entry[i];
     }
   }
 
-  log_warning("Requested uninitialized variable '%s'", identifier);
+  log_warning("Requested unknown function '%s'", identifier);
   return 0;
 }
+
+void symbol_table_set_variable_bool(RTSymbolTable* table, const char* identifier, bool value)
+{
+  RTSymbol* variable = symbol_table_get_variable(table, identifier);
+  if (variable != NULL)
+  {
+      variable->as.variable.value = runtime_value_create_bool(value);
+  }
+  else
+  {
+    smallstr(&table->entry[table->count].identifier, identifier);
+    table->entry[table->count].type = RT_SYMBOL_VARIABLE;
+    table->entry[table->count].as.variable.name = table->entry[table->count].identifier.str;
+    table->entry[table->count].as.variable.value = runtime_value_create_bool(value);
+    table->count++;
+  }
+}
+
+void symbol_table_set_variable_int(RTSymbolTable* table, const char* identifier, int value) 
+{
+  RTSymbol* variable = symbol_table_get_variable(table, identifier);
+  if (variable != NULL)
+  {
+      variable->as.variable.value = runtime_value_create_int(value);
+  }
+  else
+  {
+    smallstr(&table->entry[table->count].identifier, identifier);
+    table->entry[table->count].type = RT_SYMBOL_VARIABLE;
+    table->entry[table->count].as.variable.name = table->entry[table->count].identifier.str;
+    table->entry[table->count].as.variable.value = runtime_value_create_int(value);
+    table->count++;
+  }
+}
+
+void symbol_table_set_variable_float(RTSymbolTable* table, const char* identifier, double value) 
+{
+  RTSymbol* variable = symbol_table_get_variable(table, identifier);
+  if (variable != NULL)
+  {
+      variable->as.variable.value = runtime_value_create_float(value);
+  }
+  else
+  {
+    smallstr(&table->entry[table->count].identifier, identifier);
+    table->entry[table->count].type = RT_SYMBOL_VARIABLE;
+    table->entry[table->count].as.variable.name = table->entry[table->count].identifier.str;
+    table->entry[table->count].as.variable.value = runtime_value_create_float(value);
+    table->count++;
+  }
+}
+
+void symbol_table_set_variable_string(RTSymbolTable* table, const char* identifier, char* value) 
+{
+  RTSymbol* variable = symbol_table_get_variable(table, identifier);
+  if (variable != NULL)
+  {
+      variable->as.variable.value = runtime_value_create_string(value);
+  }
+  else
+  {
+    smallstr(&table->entry[table->count].identifier, identifier);
+    table->entry[table->count].type = RT_SYMBOL_VARIABLE;
+    table->entry[table->count].as.variable.name = table->entry[table->count].identifier.str;
+    table->entry[table->count].as.variable.value = runtime_value_create_string(value);
+    table->count++;
+  }
+}
+
 
 //
 // Evaluation fucntions
 //
 
-ExpressionValue eval_expression(SymbolTable* table, ASTExpression* expr) 
+RTValue eval_expression(RTSymbolTable* table, ASTExpression* expr) 
 {
   switch (expr->type) 
   {
@@ -163,8 +160,8 @@ ExpressionValue eval_expression(SymbolTable* table, ASTExpression* expr)
       return runtime_value_create_string(expr->as.string_literal);
     case EXPR_FACTOR:
       {
-        ExpressionValue left = eval_expression(table, expr->as.term_expr.left);
-        ExpressionValue right = eval_expression(table, expr->as.term_expr.right);
+        RTValue left = eval_expression(table, expr->as.term_expr.left);
+        RTValue right = eval_expression(table, expr->as.term_expr.right);
         ASTExpressionType resultType;
 
         if (left.type == EXPR_LITERAL_STRING || right.type == EXPR_LITERAL_STRING)
@@ -183,7 +180,7 @@ ExpressionValue eval_expression(SymbolTable* table, ASTExpression* expr)
                 return runtime_value_create_float((int)left.as.number_value + right.as.number_value);
               else if (resultType == EXPR_LITERAL_STRING)
                 //TODO: String concatenation and conversion
-                return runtime_value_create_error(RUNTIME_ERROR_NOT_IMPLEMENTED);
+                return runtime_value_create_error(RT_ERROR_NOT_IMPLEMENTED);
               else
                 ASSERT_BREAK();
             }
@@ -195,7 +192,7 @@ ExpressionValue eval_expression(SymbolTable* table, ASTExpression* expr)
                 return runtime_value_create_float(left.as.number_value - right.as.number_value);
               else if (resultType == EXPR_LITERAL_STRING)
                 //TODO: String concatenation and conversion
-                return runtime_value_create_error(RUNTIME_ERROR_NOT_IMPLEMENTED);
+                return runtime_value_create_error(RT_ERROR_NOT_IMPLEMENTED);
               else
                 ASSERT_BREAK();
             }
@@ -208,8 +205,8 @@ ExpressionValue eval_expression(SymbolTable* table, ASTExpression* expr)
       break;
     case EXPR_TERM: 
       {
-        ExpressionValue left =  eval_expression(table, expr->as.factor_expr.left);
-        ExpressionValue right = eval_expression(table, expr->as.factor_expr.right);
+        RTValue left =  eval_expression(table, expr->as.factor_expr.left);
+        RTValue right = eval_expression(table, expr->as.factor_expr.right);
         ASTExpressionType resultType;
 
         if (left.type == EXPR_LITERAL_STRING || right.type == EXPR_LITERAL_STRING)
@@ -228,15 +225,14 @@ ExpressionValue eval_expression(SymbolTable* table, ASTExpression* expr)
                 return runtime_value_create_float(left.as.number_value * right.as.number_value);
               else if (resultType == EXPR_LITERAL_STRING)
                 //TODO: String concatenation and conversion 
-                return runtime_value_create_error(RUNTIME_ERROR_NOT_IMPLEMENTED);
+                return runtime_value_create_error(RT_ERROR_NOT_IMPLEMENTED);
               else
                 ASSERT_BREAK();
             }
           case OP_DIVIDE:
             {
-
               if (resultType != EXPR_LITERAL_STRING && right.as.number_value == 0.0)
-                return runtime_value_create_error(RUNTIME_ERROR_DIVIDE_BY_ZERO);
+                return runtime_value_create_error(RT_ERROR_DIVIDE_BY_ZERO);
 
               if (resultType == EXPR_LITERAL_INT)
                 return runtime_value_create_int((int)(left.as.number_value / right.as.number_value));
@@ -244,14 +240,14 @@ ExpressionValue eval_expression(SymbolTable* table, ASTExpression* expr)
                 return runtime_value_create_float(left.as.number_value / right.as.number_value);
               else if (resultType == EXPR_LITERAL_STRING)
                 //TODO: String concatenation and conversion 
-                return runtime_value_create_error(RUNTIME_ERROR_NOT_IMPLEMENTED);
+                return runtime_value_create_error(RT_ERROR_NOT_IMPLEMENTED);
               else
                 ASSERT_BREAK();
             }
           case OP_MOD:
             {
               if (resultType == EXPR_LITERAL_STRING)
-                return runtime_value_create_error(RUNTIME_ERROR_UNSUPPORTED_OPERATION);
+                return runtime_value_create_error(RT_ERROR_UNSUPPORTED_OPERATION);
               else
                 return runtime_value_create_int(((int)left.as.number_value % (int) right.as.number_value));
             }
@@ -264,26 +260,29 @@ ExpressionValue eval_expression(SymbolTable* table, ASTExpression* expr)
       } break;
     case EXPR_LVALUE:
       {
-        return symbol_table_get_variable(table, expr->as.identifier.str)->as.variable;
+        return symbol_table_get_variable(table, expr->as.identifier.str)->as.variable.value;
       }
     case EXPR_UNARY:
       {
-        ExpressionValue value = eval_expression(table, expr->as.unary_expr.expression);
-        ASSERT(expr->as.unary_expr.op == OP_UNARY_MINUS || expr->as.unary_expr.op == OP_UNARY_PLUS);
+        RTValue value = eval_expression(table, expr->as.unary_expr.expression);
+        ASSERT(expr->as.unary_expr.op == OP_UNARY_MINUS || expr->as.unary_expr.op == OP_UNARY_PLUS || expr->as.unary_expr.op == OP_LOGICAL_NOT);
         if (expr->as.unary_expr.op == OP_UNARY_MINUS)
           value.as.number_value = -value.as.number_value;
-        else
-        {
+        else if (expr->as.unary_expr.op == OP_UNARY_PLUS)
           value.as.number_value = +value.as.number_value;
-        }
+        else if (expr->as.unary_expr.op == OP_LOGICAL_NOT)
+          value.as.number_value =  !((bool)value.as.number_value);
+        else
+          ASSERT_BREAK();
+
         return value;
         break;
       }
     case EXPR_COMPARISON:
       {
         //TODO: validate conversion between types for boolean comparisons
-        ExpressionValue left = eval_expression(table, expr->as.term_expr.left);
-        ExpressionValue right = eval_expression(table, expr->as.term_expr.right);
+        RTValue left = eval_expression(table, expr->as.term_expr.left);
+        RTValue right = eval_expression(table, expr->as.term_expr.right);
 
         switch (expr->as.comparison_expr.op)
         {
@@ -318,31 +317,31 @@ ExpressionValue eval_expression(SymbolTable* table, ASTExpression* expr)
   return runtime_value_create_void();
 }
 
-ExpressionValue eval_statement(SymbolTable* table, ASTStatement* stmt) 
+RTValue eval_statement(RTSymbolTable* table, ASTStatement* stmt) 
 {
   switch (stmt->type) 
   {
     case AST_STATEMENT_ASSIGNMENT: 
       {
-        ExpressionValue value = eval_expression(table, stmt->as.assignment.expression);
-        ASSERT(value.error_code == RUNTIME_SUCCESS);
+        RTValue value = eval_expression(table, stmt->as.assignment.expression);
+        ASSERT(value.error_code == RT_ERROR_SUCCESS);
 
-        if (value.type == EXPR_LITERAL_BOOL)
+        if (value.type == RT_VAL_BOOL)
         {
           symbol_table_set_variable_bool(table, stmt->as.assignment.identifier.str, value.as.number_value);
           return runtime_value_create_bool(value.as.number_value);
         }
-        if (value.type == EXPR_LITERAL_INT)
+        if (value.type == RT_VAL_INT)
         {
-          symbol_table_set_variable_int(table, stmt->as.assignment.identifier.str, value.as.number_value);
-          return runtime_value_create_int(value.as.number_value);
+          symbol_table_set_variable_int(table, stmt->as.assignment.identifier.str, (int) value.as.number_value);
+          return runtime_value_create_int((int) value.as.number_value);
         }
-        else if (value.type == EXPR_LITERAL_INT)
+        else if (value.type == RT_VAL_FLOAT)
         {
           symbol_table_set_variable_float(table, stmt->as.assignment.identifier.str, value.as.number_value);
           return runtime_value_create_float(value.as.number_value);
         }
-        else if (value.type == EXPR_LITERAL_STRING)
+        else if (value.type == RT_VAL_STRING)
         {
           symbol_table_set_variable_string(table, stmt->as.assignment.identifier.str, value.as.string_value);
           return runtime_value_create_string(value.as.string_value);
@@ -355,7 +354,7 @@ ExpressionValue eval_statement(SymbolTable* table, ASTStatement* stmt)
       }
       //case AST_STATEMENT_PRINT: 
       //  {
-      //    ExpressionValue value = eval_expression(table, stmt->as.print_expr);
+      //    RTValue value = eval_expression(table, stmt->as.print_expr);
       //    if (value.type == EXPR_LITERAL_INT)
       //    {
       //      printf("%d\n", (int) value.as.number_value);
@@ -383,8 +382,8 @@ ExpressionValue eval_statement(SymbolTable* table, ASTStatement* stmt)
       }
     case AST_STATEMENT_IF: 
       {
-        ExpressionValue condition = condition = eval_expression(table, stmt->as.if_stmt.condition);
-        ASSERT(condition.error_code == RUNTIME_SUCCESS && (condition.type == EXPR_LITERAL_FLOAT || condition.type == EXPR_LITERAL_INT || condition.type == EXPR_LITERAL_BOOL ));
+        RTValue condition = condition = eval_expression(table, stmt->as.if_stmt.condition);
+        ASSERT(condition.error_code == RT_ERROR_SUCCESS && (condition.type == RT_VAL_FLOAT || condition.type == RT_VAL_INT || condition.type == RT_VAL_BOOL ));
 
         if (condition.as.number_value != 0) 
         {
@@ -406,9 +405,9 @@ ExpressionValue eval_statement(SymbolTable* table, ASTStatement* stmt)
         while (true)
         {
           // Eval Condition and break if false
-          ExpressionValue value = eval_expression(table, stmt->as.while_stmt.condition);
-          ASSERT(value.error_code == RUNTIME_SUCCESS);
-          if (value.as.number_value == 0)
+          RTValue value = eval_expression(table, stmt->as.while_stmt.condition);
+          ASSERT(value.error_code == RT_ERROR_SUCCESS);
+          if (value.as.number_value == false)
             break;
 
           // Eval block
@@ -423,8 +422,8 @@ ExpressionValue eval_statement(SymbolTable* table, ASTStatement* stmt)
         break;
       }
     case AST_STATEMENT_FUNCTION_CALL: 
-      Symbol* symbol = symbol_table_get_function(table, stmt->as.expression->as.func_call_expr.identifier.str);
-      ExpressionValue arg0 = eval_expression(table, stmt->as.expression->as.func_call_expr.args);
+      RTSymbol* symbol = symbol_table_get_function(table, stmt->as.expression->as.func_call_expr.identifier.str);
+      RTValue arg0 = eval_expression(table, stmt->as.expression->as.func_call_expr.args);
       symbol->as.function.function_ptr(1, &arg0);
       break;
     case AST_STATEMENT_FUNCTION_DECL: 
@@ -449,15 +448,15 @@ ExpressionValue eval_statement(SymbolTable* table, ASTStatement* stmt)
   return runtime_value_create_void();
 }
 
-int eval_program(SymbolTable* table, ASTProgram* program) 
+int eval_program(RTSymbolTable* table, ASTProgram* program) 
 {
-  ExpressionValue last_value = {0};
+  RTValue last_value = {0};
   ASTStatement* statement = program->body;
 
   while(statement != NULL)
   {
     last_value = eval_statement(table, statement);
-    if (last_value.error_code != RUNTIME_SUCCESS)
+    if (last_value.error_code != RT_ERROR_SUCCESS)
       return (int) last_value.error_code;
 
     statement = statement->next;
