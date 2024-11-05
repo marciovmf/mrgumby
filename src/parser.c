@@ -911,7 +911,7 @@ static ASTStatement* parse_statement(Lexer *lexer)
         {
           // FUNCTION CALL
           ASTExpression* function_call = parse_function_call(lexer);
-          if(function_call)
+          if(function_call && lexer_skip_token(lexer, TOKEN_SEMICOLON))
           {
             return ast_create_statement_function_call(function_call);
           }
@@ -920,7 +920,7 @@ static ASTStatement* parse_statement(Lexer *lexer)
         {
           // ASSIGNMENT
           ASTStatement* statement = parse_assignment_statement(lexer);
-          if(statement)
+          if(statement && lexer_skip_token(lexer, TOKEN_SEMICOLON))
             return statement;
         }
         break;
@@ -929,7 +929,7 @@ static ASTStatement* parse_statement(Lexer *lexer)
     case TOKEN_RETURN:
       {
         ASTStatement* statement = parse_return_statement(lexer);
-        if(statement)
+        if(statement && lexer_skip_token(lexer, TOKEN_SEMICOLON))
           return statement;
         break;
       }
@@ -962,7 +962,7 @@ static ASTStatement* parse_statement(Lexer *lexer)
 
 
 /*
- * <StatementList> -> <Statement>; [ <StatementList> ]
+ * <StatementList> -> <Statement> [ <StatementList> ]
  */
 static ASTStatement* parse_statement_list(Lexer* lexer)
 {
@@ -971,12 +971,12 @@ static ASTStatement* parse_statement_list(Lexer* lexer)
 
   while(statement)
   {
-    Token look_ahead_token = lexer_look_ahead(lexer);
-    if (look_ahead_token.type != TOKEN_SEMICOLON)
-      break;
-
-    lexer_skip_token(lexer, TOKEN_SEMICOLON);
-    statement->next = parse_statement_list(lexer);
+    //Token look_ahead_token = lexer_look_ahead(lexer);
+    //if (look_ahead_token.type != TOKEN_SEMICOLON)
+    //  break;
+    //lexer_skip_token(lexer, TOKEN_SEMICOLON);
+    //statement->next = parse_statement_list(lexer);
+    statement->next = parse_statement(lexer);
     statement = statement->next;
   }
 
