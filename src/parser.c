@@ -288,7 +288,8 @@ Token lexer_get_next_token_(Lexer *lexer, bool suppress_errors)
     token.type = TOKEN_OP_NEQ;
     token.value[0] = lexer->current_char;
     token.value[1] = lexer->next_char;
-    token.value[3] = '\0';
+    token.value[2] = '\0';
+    lexer_advance(lexer);
     lexer_advance(lexer);
     return token;
   }
