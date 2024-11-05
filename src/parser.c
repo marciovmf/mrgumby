@@ -10,8 +10,6 @@
 #include "parser.h"
 #include "common.h"
 #include "ast.h"
-#include <ctype.h>
-#include <string.h>
 
 #define report_error(lexer, message) log_error("Syntax error at line %d, column %d: %s\n",\
     lexer->line, lexer->column, message);
@@ -203,7 +201,8 @@ static bool lexer_skip_token(Lexer* lexer, TokenType expected_type)
   Token t = lexer_get_next_token(lexer);
   bool result = (t.type == expected_type);
   if (!result)
-    report_error_unexpected_token(lexer, t.type);
+     log_error("Sytax error at %d, %d: Expecting '%s' but '%s' found. \n",
+         lexer->line, lexer->column, token_get_name(expected_type), token_get_name(t.type));
   return true;
 }
 
