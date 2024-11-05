@@ -1,27 +1,24 @@
 #include "common.h"
-#include "parser.h"
-#include "ast.h"
-#include "eval.h"
+#include "minima.h"
 
-
-RTValue function_print(int param_count, RTValue* parameters)
+MiValue function_print(int param_count, MiValue* parameters)
 {
   if (param_count == 1)
   {
-    RTValue* value = &parameters[0];
-    if (value->type == RT_VAL_BOOL)
+    MiValue* value = &parameters[0];
+    if (value->type == Mi_VAL_BOOL)
     {
       printf("%s\n",((int) value->as.number_value) ? "true" : "false");
     }
-    else if (value->type == RT_VAL_INT)
+    else if (value->type == Mi_VAL_INT)
     {
       printf("%d\n", (int) value->as.number_value);
     }
-    else if (value->type == RT_VAL_FLOAT)
+    else if (value->type == Mi_VAL_FLOAT)
     {
       printf("%f\n", value->as.number_value);
     }
-    else if (value->type == RT_VAL_STRING)
+    else if (value->type == Mi_VAL_STRING)
     {
       printf("%s\n", value->as.string_value);
     }
@@ -31,7 +28,7 @@ RTValue function_print(int param_count, RTValue* parameters)
     }
   }
 
-  return runtime_value_create_void();
+  return mi_runtime_value_create_void();
 }
 
 int test_language(int argc, char **argv)
@@ -51,37 +48,34 @@ int test_language(int argc, char **argv)
     return 1;
   }
 
-  ASTProgram* program = parse_program(buffer);
-
-  RTSymbolTable symbol_table;
-  symbol_table_init(&symbol_table);
+  MiProgram* program = mi_program_create(buffer);
 
   // Add a function into the symbol table
-  RTSymbol* s = &symbol_table.entry[symbol_table.count++];
+  MiSymbol* s = &program->symbols.entry[program->symbols.count++];
   smallstr(&s->identifier, "print");
-  s->type = RT_SYMBOL_FUNCTION;
+  s->type = MI_SYMBOL_FUNCTION;
   s->as.function.param_count = 1;
   s->as.function.function_ptr = function_print;
-  s->as.function.parameters = (RTVariable*) malloc(sizeof(RTVariable));
+  s->as.function.parameters = (MiVariable*) malloc(sizeof(MiVariable));
   s->as.function.parameters[0].name = "msg";
-  s->as.function.parameters[0].value.type = RT_VAL_ANY;
+  s->as.function.parameters[0].value.type = Mi_VAL_ANY;
   s->as.function.parameters[0].scopeLevel = 0;
 
-  int result = eval_program(&symbol_table, program);
+  int result = mi_program_run(program);
   log_info("program returned %d\n", result);
 
-  for (int i = 0; i < symbol_table.count; i++)
+  for (int i = 0; i < program->symbols.count; i++)
   {
-    RTSymbol* symbol = &symbol_table.entry[i];
-    if (symbol->type != RT_SYMBOL_FUNCTION)
+    MiSymbol* symbol = &program->symbols.entry[i];
+    if (symbol->type != MI_SYMBOL_FUNCTION)
       continue;
     log_info("Function %s, %d args\n", symbol->identifier.str, symbol->as.function.param_count);
   }
 
-  for (int i = 0; i < symbol_table.count; i++)
+  for (int i = 0; i < program->symbols.count; i++)
   {
-    RTSymbol* symbol = &symbol_table.entry[i];
-    if (symbol->type != RT_SYMBOL_VARIABLE)
+    MiSymbol* symbol = &program->symbols.entry[i];
+    if (symbol->type != MI_SYMBOL_VARIABLE)
       continue;
 
     if (symbol->as.variable.value.type == EXPR_LITERAL_BOOL)
@@ -105,7 +99,7 @@ int test_language(int argc, char **argv)
     }
   }
 
-  ast_destroy_program(program);
+  mi_ast_program_destroy(program->ast);
   free(buffer);
   return result;
 }

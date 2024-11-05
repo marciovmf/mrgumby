@@ -1,15 +1,12 @@
 /**
- * @file ast.h
- * @brief Defines core structures and functions for Abstract Syntax Tree (AST) nodes.
- *
- * Provides data structures and utilities for expressions, statements, 
- * and program constructs in a language's AST.
+ * @file minima_ast.h
+ * @brief Defines core structures and functions for Minima script Abstract Syntax Tree (AST) nodes.
  *
  * @author marciovmf
  */
 
-#ifndef AST_H
-#define AST_H
+#ifndef MINIMA_AST_H
+#define MINIMA_AST_H
 
 #include "common.h"   // for Smallstr
 
@@ -40,7 +37,7 @@ typedef enum ASTTermOperator_e
   OP_MULTIPLY     = 2,  // Multiplication
   OP_DIVIDE       = 3,  // Division
   OP_MOD          = 4,  // Modulus
-  //OP_ASSIGN      // Assignment
+                        //OP_ASSIGN      // Assignment
 } ASTTermOperator;
 
 typedef enum ASTUnaryOperator_e
@@ -76,7 +73,6 @@ typedef enum ASTStatementType_e
   AST_STATEMENT_FUNCTION_DECL,   // Function declaration
   AST_STATEMENT_BLOCK,           // Block of statements
   AST_STATEMENT_PRINT,           // Print statement
-  AST_STATEMENT_INPUT,           // Input statement
   AST_STATEMENT_FUNCTION_CALL,   // Function call
   AST_STATEMENT_BREAK            // Break statement
 } ASTStatementType;
@@ -139,7 +135,7 @@ struct ASTFunctionCallExpression_t
 
 struct ASTExpression_t
 {
-  ASTExpressionType type;                   // Expression type
+  ASTExpressionType type;                     // Expression type
   union 
   {
     ASTUnaryExpression        unary_expr;     // Unary expression
@@ -226,41 +222,38 @@ struct ASTProgram_t
 //
 // Helper functions for ASTExpression nodes
 //
-ASTProgram* ast_create_program(ASTStatement* statements);
+ASTProgram* mi_ast_program_create(ASTStatement* statements);
+void mi_ast_program_destroy(ASTProgram* program);
 
-ASTExpression* ast_create_expression_term(ASTExpression* left, ASTTermOperator op, ASTExpression* right);
-ASTExpression* ast_create_expression_factor(ASTExpression* left, ASTFactorOperator op, ASTExpression* right);
-ASTExpression* ast_create_expression_unary(ASTUnaryOperator op, ASTExpression* expression);
-ASTExpression* ast_create_expression_logical(ASTExpression* left, ASTLogicalOperator op, ASTExpression* right);
-ASTExpression* ast_create_expression_comparison(ASTExpression* left, ASTComparisonOperator op, ASTExpression* right);
-ASTExpression* ast_create_expression_literal_bool(bool value);
-ASTExpression* ast_create_expression_literal_int(int value);
-ASTExpression* ast_create_expression_literal_float(double value);
-ASTExpression* ast_create_expression_literal_string(const char* value);
-ASTExpression* ast_create_expression_lvalue(const char* identifier);
-ASTExpression* ast_create_expression_function_call(const char* identifier, ASTExpression* args);
+ASTExpression* mi_ast_expression_create_term(ASTExpression* left, ASTTermOperator op, ASTExpression* right);
+ASTExpression* mi_ast_expression_create_factor(ASTExpression* left, ASTFactorOperator op, ASTExpression* right);
+ASTExpression* mi_ast_expression_create_unary(ASTUnaryOperator op, ASTExpression* expression);
+ASTExpression* mi_ast_expression_create_logical(ASTExpression* left, ASTLogicalOperator op, ASTExpression* right);
+ASTExpression* mi_ast_expression_create_comparison(ASTExpression* left, ASTComparisonOperator op, ASTExpression* right);
+ASTExpression* mi_ast_expression_create_literal_bool(bool value);
+ASTExpression* mi_ast_expression_create_literal_int(int value);
+ASTExpression* mi_ast_expression_create_literal_float(double value);
+ASTExpression* mi_ast_expression_create_literal_string(const char* value);
+ASTExpression* mi_ast_expression_create_lvalue(const char* identifier);
+ASTExpression* mi_ast_expression_create_function_call(const char* identifier, ASTExpression* args);
+void mi_ast_expression_destroy(ASTExpression* expression);
 
 //
 // Helper functions for creating ASTStatement
 //
-ASTStatement* ast_create_statement_assignment(const char* identifier, ASTExpression* expression);
-ASTStatement* ast_create_statement_if(ASTExpression* condition, ASTStatement* if_branch, ASTStatement* else_branch);
-ASTStatement* ast_create_statement_for(ASTStatement* init, ASTExpression* condition, ASTStatement* update, ASTStatement* body);
-ASTStatement* ast_create_statement_while(ASTExpression* condition, ASTStatement* body);
-ASTStatement* ast_create_statement_return(ASTExpression* expression);
-ASTStatement* ast_create_statement_function_decl(const char* identifier, ASTStatement* params, ASTStatement* body);
-ASTStatement* ast_create_statement_function_call(ASTExpression* function_call_expression);
-ASTStatement* ast_create_statement_print(ASTExpression* expression);
-ASTStatement* ast_create_statement_input(const char* identifier);
-ASTStatement* ast_create_statement_break(void);
+ASTStatement* mi_ast_statement_create_assignment(const char* identifier, ASTExpression* expression);
+ASTStatement* mi_ast_statement_create_if(ASTExpression* condition, ASTStatement* if_branch, ASTStatement* else_branch);
+ASTStatement* mi_ast_statement_create_for(ASTStatement* init, ASTExpression* condition, ASTStatement* update, ASTStatement* body);
+ASTStatement* mi_ast_statement_create_while(ASTExpression* condition, ASTStatement* body);
+ASTStatement* mi_ast_statement_create_return(ASTExpression* expression);
+ASTStatement* mi_ast_statement_create_function_decl(const char* identifier, ASTStatement* params, ASTStatement* body);
+ASTStatement* mi_ast_statement_create_function_call(ASTExpression* function_call_expression);
+ASTStatement* mi_ast_statement_create_print(ASTExpression* expression);
+ASTStatement* mi_ast_statement_create_input(const char* identifier);
+ASTStatement* mi_ast_statement_create_break(void);
+void mi_ast_statement_destroy(ASTStatement* statement);
 
-//
-// Helper functions for destroying nodes
-//
-void ast_destroy_expression(ASTExpression* expression);
-void ast_destroy_statement(ASTStatement* statement);
-void ast_destroy_program(ASTProgram* program);
-void ast_destroy_statement_list(ASTStatement* stmt_list);
-void ast_destroy_expression_list(ASTExpression* list);
+void mi_ast_statement_list_destroy(ASTStatement* stmt_list);
+void mi_ast_expression_list_destroy(ASTExpression* list);
 
-#endif // AST_H
+#endif // MINIMA_AST_H

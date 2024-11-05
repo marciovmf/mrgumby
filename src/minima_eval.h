@@ -8,18 +8,18 @@
  * @author marciovmf
  */
 
-#ifndef INTERPRETER_H
-#define INTERPRETER_H
+#ifndef MINIMA_EVAL_H
+#define MINIMA_EVAL_H
 
-#include "ast.h"
+#include "minima_ast.h"
 #include "common.h"
 
 //
 // Symbol Table
 //
 
-#ifndef RT_MAX_SYMBOLS
-#define RT_MAX_SYMBOLS       100
+#ifndef MI_Mi_MAX_SYMBOLS
+#define MI_Mi_MAX_SYMBOLS       100
 #endif
 
 
@@ -29,64 +29,64 @@
  */
 typedef enum
 {
-  RT_ERROR_SUCCESS               = 0,       // No error.
-  RT_ERROR_DIVIDE_BY_ZERO        = -1024,   // Error for division by zero.
-  RT_ERROR_UNSUPPORTED_OPERATION = -1025,   // Error for an unsupported operation.
-  RT_ERROR_NOT_IMPLEMENTED       = -1026,   // Error for an unimplemented feature.
-} RTError;
+  Mi_ERROR_SUCCESS               = 0,       // No error.
+  Mi_ERROR_DIVIDE_BY_ZERO        = -1024,   // Error for division by zero.
+  Mi_ERROR_UNSUPPOMiED_OPERATION = -1025,   // Error for an unsupported operation.
+  Mi_ERROR_NOT_IMPLEMENTED       = -1026,   // Error for an unimplemented feature.
+} MiError;
 
-typedef enum RTValueType_t
+typedef enum MiValueType_t
 {
-  RT_VAL_INT,
-  RT_VAL_FLOAT,
-  RT_VAL_STRING,
-  RT_VAL_BOOL,
-  RT_VAL_VOID,
-  RT_VAL_ANY // used of function parameters
-} RTValueType;
+  Mi_VAL_INT,
+  Mi_VAL_FLOAT,
+  Mi_VAL_STRING,
+  Mi_VAL_BOOL,
+  Mi_VAL_VOID,
+  Mi_VAL_ANY // used of function parameters
+} MiValueType;
 
-typedef struct RTValue_t
+typedef struct MiValue_t
 {
-  RTError error_code;
-  RTValueType type;
+  MiError error_code;
+  MiValueType type;
   union
   {
     char* string_value;
     double number_value; // used for float, double and bool
   } as;
-} RTValue;
+} MiValue;
 
-typedef struct RTVariable_t
+typedef struct MiVariable_t
 {
   char*     name;
-  RTValue   value;
+  MiValue   value;
   int       scopeLevel;
-} RTVariable;
+} MiVariable;
 
-typedef struct RTFunction_t
+typedef struct MiFunction_t
 {
   char*       name;
   int         param_count;
-  RTVariable* parameters;
-  RTValue (*function_ptr)(int param_count, RTValue* parameters); 
-} RTFunction;
+  MiVariable* parameters;
+  MiValue (*function_ptr)(int param_count, MiValue* parameters); 
+} MiFunction;
 
-typedef struct RTSymbol_t
+typedef struct MiSymbol_t
 {
   Smallstr identifier;
-  enum { RT_SYMBOL_VARIABLE, RT_SYMBOL_FUNCTION } type;
+  enum { MI_SYMBOL_VARIABLE, MI_SYMBOL_FUNCTION } type;
   union
   {
-    RTVariable variable;
-    RTFunction function;
+    MiVariable variable;
+    MiFunction function;
   } as;
-} RTSymbol;
+} MiSymbol;
 
 typedef struct SymbolTable_t
 {
-  RTSymbol entry[RT_MAX_SYMBOLS];   // Array of symbols (variables).
+  MiSymbol entry[MI_Mi_MAX_SYMBOLS];   // Array of symbols (variables).
   int count;                        // Number of variables currently stored.
-} RTSymbolTable;
+} MiSymbolTable;
 
 
 /**
@@ -94,7 +94,7 @@ typedef struct SymbolTable_t
  * 
  * @param table Pointer to the symbol table to initialize.
  */
-void symbol_table_init(RTSymbolTable* table);
+void mi_symbol_table_init(MiSymbolTable* table);
 
 /**
  * @brief Retrieves a variable from the symbol table by its identifier.
@@ -103,13 +103,12 @@ void symbol_table_init(RTSymbolTable* table);
  * @param identifier Name of the variable to retrieve.
  * @return Pointer to the Symbol if found, or NULL if not found.
  */
-RTSymbol* symbol_table_get_variable(RTSymbolTable* table, const char* identifier);
+MiSymbol* mi_symbol_table_get_variable(MiSymbolTable* table, const char* identifier);
 
 
 //
 // Public functions
 //
-
 
 /**
  * @brief Evaluates the entire program by iterating through the AST.
@@ -118,7 +117,7 @@ RTSymbol* symbol_table_get_variable(RTSymbolTable* table, const char* identifier
  * @param program Pointer to the AST program node to evaluate.
  * @return Exit code or runtime status of the program execution.
  */
-int eval_program(RTSymbolTable* table, ASTProgram* program);
+int mi_eval_program(MiSymbolTable* table, ASTProgram* program);
 
 /**
  * @brief Creates a boolean runtime value
@@ -126,7 +125,7 @@ int eval_program(RTSymbolTable* table, ASTProgram* program);
  * @param value The value to use when creating the runtime value
  * @return The runtime value
  */
-RTValue runtime_value_create_bool(bool value);
+MiValue mi_runtime_value_create_bool(bool value);
 
 /**
  * @brief Creates a int runtime value
@@ -134,7 +133,7 @@ RTValue runtime_value_create_bool(bool value);
  * @param value The value to use when creating the runtime value
  * @return The runtime value
  */
-RTValue runtime_value_create_int(int value);
+MiValue mi_runtime_value_create_int(int value);
 
 /**
  * @brief Creates a float runtime value
@@ -142,7 +141,7 @@ RTValue runtime_value_create_int(int value);
  * @param value The value to use when creating the runtime value
  * @return The runtime value
  */
-RTValue runtime_value_create_float(double value);
+MiValue mi_runtime_value_create_float(double value);
 
 /**
  * @brief Creates a string runtime value
@@ -150,15 +149,15 @@ RTValue runtime_value_create_float(double value);
  * @param value The value to use when creating the runtime value
  * @return The runtime value
  */
-RTValue runtime_value_create_string(char* value);
+MiValue mi_runtime_value_create_string(char* value);
 
 /**
  * @brief Creates a void runtime value
  * 
  * @return The runtime value
  */
-RTValue runtime_value_create_void(void);
+MiValue mi_runtime_value_create_void(void);
 
 
-#endif  // INTERPRETER_H
+#endif  // MINIMA_EVAL_H
 
