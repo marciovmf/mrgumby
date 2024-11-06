@@ -1,12 +1,22 @@
 /**
  * @file minima_ast.h
- * @brief Defines core structures and functions for Minima script Abstract Syntax Tree (AST) nodes.
+ * @brief Defines core structures and helper functions for creating and managing AST nodes for Minima script language.
+ *
+ * This header organizes functions into groups based on their prefixes:
+ *
+ * - mi_ast_expression_*: Functions for creating and managing expression nodes in the AST.
+ * 
+ * - mi_ast_statement_*: Functions for creating and managing statement nodes in the AST.
  *
  * @author marciovmf
  */
 
 #ifndef MINIMA_AST_H
 #define MINIMA_AST_H
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #include "common.h"   // for Smallstr
 
@@ -255,5 +265,9 @@ void mi_ast_statement_destroy(ASTStatement* statement);
 
 void mi_ast_statement_list_destroy(ASTStatement* stmt_list);
 void mi_ast_expression_list_destroy(ASTExpression* list);
+
+#ifdef __cplusplus
+extern {
+#endif
 
 #endif // MINIMA_AST_H

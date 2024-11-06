@@ -2,50 +2,47 @@
 #include "minima_ast.h"
 #include "minima_eval.h"
 
+
 //
 // Runtime expression value
 //
 
 MiValue mi_runtime_value_create_bool(bool value)
 {
-  return (MiValue){ .type = Mi_VAL_BOOL, .as.number_value = value, .error_code = Mi_ERROR_SUCCESS };
+  return (MiValue){ .type = MI_VAL_BOOL, .as.number_value = value, .error_code = MI_ERROR_SUCCESS };
 }
 
 MiValue mi_runtime_value_create_int(int value)
 {
-  return (MiValue){ .type = Mi_VAL_INT, .as.number_value = value, .error_code = Mi_ERROR_SUCCESS };
+  return (MiValue){ .type = MI_VAL_INT, .as.number_value = value, .error_code = MI_ERROR_SUCCESS };
 }
 
 MiValue mi_runtime_value_create_float(double value)
 {
-  return (MiValue){ .type = Mi_VAL_FLOAT, .as.number_value = value, .error_code = Mi_ERROR_SUCCESS};
+  return (MiValue){ .type = MI_VAL_FLOAT, .as.number_value = value, .error_code = MI_ERROR_SUCCESS};
 }
 
 MiValue mi_runtime_value_create_string(char* value)
 {
-  return (MiValue){ .type = Mi_VAL_STRING, .as.string_value = value, .error_code = Mi_ERROR_SUCCESS};
+  return (MiValue){ .type = MI_VAL_STRING, .as.string_value = value, .error_code = MI_ERROR_SUCCESS};
 }
 
 MiValue mi_runtime_value_create_void(void)
 {
-  return (MiValue){ .type = Mi_VAL_VOID, .error_code = Mi_ERROR_SUCCESS};
+  return (MiValue){ .type = MI_VAL_VOID, .error_code = MI_ERROR_SUCCESS};
 }
 
 inline MiValue mi_runtime_value_create_error(MiError error)
 {
-  return (MiValue){ .type = Mi_VAL_VOID, .error_code = error};
+  return (MiValue){ .type = MI_VAL_VOID, .error_code = error};
 }
-
-//
-// Symbol table functions
-//
 
 void mi_symbol_table_init(MiSymbolTable* table) 
 {
   table->count = 0;
 }
 
-MiSymbol* mi_symbol_table_get_variable(MiSymbolTable* table, const char* identifier) 
+inline MiSymbol* s_symbol_table_get_variable(MiSymbolTable* table, const char* identifier) 
 {
   for (int i = 0; i < table->count; i++) 
   {
@@ -54,9 +51,16 @@ MiSymbol* mi_symbol_table_get_variable(MiSymbolTable* table, const char* identif
       return &table->entry[i];
     }
   }
+  return NULL;
+}
 
-  log_warning("Requested uninitialized variable '%s'", identifier);
-  return 0;
+MiSymbol* mi_symbol_table_get_variable(MiSymbolTable* table, const char* identifier) 
+{
+  MiSymbol* variable = s_symbol_table_get_variable(table, identifier);
+  if (variable == NULL)
+    log_warning("Requested uninitialized variable '%s'", identifier);
+
+  return variable;
 }
 
 MiSymbol* mi_symbol_table_get_function(MiSymbolTable* table, const char* identifier) 
@@ -75,10 +79,10 @@ MiSymbol* mi_symbol_table_get_function(MiSymbolTable* table, const char* identif
 
 void mi_symbol_table_set_variable_bool(MiSymbolTable* table, const char* identifier, bool value)
 {
-  MiSymbol* variable = mi_symbol_table_get_variable(table, identifier);
+  MiSymbol* variable = s_symbol_table_get_variable(table, identifier);
   if (variable != NULL)
   {
-      variable->as.variable.value = mi_runtime_value_create_bool(value);
+    variable->as.variable.value = mi_runtime_value_create_bool(value);
   }
   else
   {
@@ -92,10 +96,10 @@ void mi_symbol_table_set_variable_bool(MiSymbolTable* table, const char* identif
 
 void mi_symbol_table_set_variable_int(MiSymbolTable* table, const char* identifier, int value) 
 {
-  MiSymbol* variable = mi_symbol_table_get_variable(table, identifier);
+  MiSymbol* variable = s_symbol_table_get_variable(table, identifier);
   if (variable != NULL)
   {
-      variable->as.variable.value = mi_runtime_value_create_int(value);
+    variable->as.variable.value = mi_runtime_value_create_int(value);
   }
   else
   {
@@ -109,10 +113,10 @@ void mi_symbol_table_set_variable_int(MiSymbolTable* table, const char* identifi
 
 void mi_symbol_table_set_variable_float(MiSymbolTable* table, const char* identifier, double value) 
 {
-  MiSymbol* variable = mi_symbol_table_get_variable(table, identifier);
+  MiSymbol* variable = s_symbol_table_get_variable(table, identifier);
   if (variable != NULL)
   {
-      variable->as.variable.value = mi_runtime_value_create_float(value);
+    variable->as.variable.value = mi_runtime_value_create_float(value);
   }
   else
   {
@@ -126,10 +130,10 @@ void mi_symbol_table_set_variable_float(MiSymbolTable* table, const char* identi
 
 void mi_symbol_table_set_variable_string(MiSymbolTable* table, const char* identifier, char* value) 
 {
-  MiSymbol* variable = mi_symbol_table_get_variable(table, identifier);
+  MiSymbol* variable = s_symbol_table_get_variable(table, identifier);
   if (variable != NULL)
   {
-      variable->as.variable.value = mi_runtime_value_create_string(value);
+    variable->as.variable.value = mi_runtime_value_create_string(value);
   }
   else
   {
@@ -140,6 +144,7 @@ void mi_symbol_table_set_variable_string(MiSymbolTable* table, const char* ident
     table->count++;
   }
 }
+
 
 
 //
@@ -180,7 +185,7 @@ MiValue mi_eval_expression(MiSymbolTable* table, ASTExpression* expr)
                 return mi_runtime_value_create_float((int)left.as.number_value + right.as.number_value);
               else if (resultType == EXPR_LITERAL_STRING)
                 //TODO: String concatenation and conversion
-                return mi_runtime_value_create_error(Mi_ERROR_NOT_IMPLEMENTED);
+                return mi_runtime_value_create_error(MI_ERROR_NOT_IMPLEMENTED);
               else
                 ASSERT_BREAK();
             }
@@ -192,7 +197,7 @@ MiValue mi_eval_expression(MiSymbolTable* table, ASTExpression* expr)
                 return mi_runtime_value_create_float(left.as.number_value - right.as.number_value);
               else if (resultType == EXPR_LITERAL_STRING)
                 //TODO: String concatenation and conversion
-                return mi_runtime_value_create_error(Mi_ERROR_NOT_IMPLEMENTED);
+                return mi_runtime_value_create_error(MI_ERROR_NOT_IMPLEMENTED);
               else
                 ASSERT_BREAK();
             }
@@ -225,14 +230,14 @@ MiValue mi_eval_expression(MiSymbolTable* table, ASTExpression* expr)
                 return mi_runtime_value_create_float(left.as.number_value * right.as.number_value);
               else if (resultType == EXPR_LITERAL_STRING)
                 //TODO: String concatenation and conversion 
-                return mi_runtime_value_create_error(Mi_ERROR_NOT_IMPLEMENTED);
+                return mi_runtime_value_create_error(MI_ERROR_NOT_IMPLEMENTED);
               else
                 ASSERT_BREAK();
             }
           case OP_DIVIDE:
             {
               if (resultType != EXPR_LITERAL_STRING && right.as.number_value == 0.0)
-                return mi_runtime_value_create_error(Mi_ERROR_DIVIDE_BY_ZERO);
+                return mi_runtime_value_create_error(MI_ERROR_DIVIDE_BY_ZERO);
 
               if (resultType == EXPR_LITERAL_INT)
                 return mi_runtime_value_create_int((int)(left.as.number_value / right.as.number_value));
@@ -240,14 +245,14 @@ MiValue mi_eval_expression(MiSymbolTable* table, ASTExpression* expr)
                 return mi_runtime_value_create_float(left.as.number_value / right.as.number_value);
               else if (resultType == EXPR_LITERAL_STRING)
                 //TODO: String concatenation and conversion 
-                return mi_runtime_value_create_error(Mi_ERROR_NOT_IMPLEMENTED);
+                return mi_runtime_value_create_error(MI_ERROR_NOT_IMPLEMENTED);
               else
                 ASSERT_BREAK();
             }
           case OP_MOD:
             {
               if (resultType == EXPR_LITERAL_STRING)
-                return mi_runtime_value_create_error(Mi_ERROR_UNSUPPOMiED_OPERATION);
+                return mi_runtime_value_create_error(MI_ERROR_UNSUPPOMiED_OPERATION);
               else
                 return mi_runtime_value_create_int(((int)left.as.number_value % (int) right.as.number_value));
             }
@@ -324,24 +329,24 @@ MiValue mi_eval_statement(MiSymbolTable* table, ASTStatement* stmt)
     case AST_STATEMENT_ASSIGNMENT: 
       {
         MiValue value = mi_eval_expression(table, stmt->as.assignment.expression);
-        ASSERT(value.error_code == Mi_ERROR_SUCCESS);
+        ASSERT(value.error_code == MI_ERROR_SUCCESS);
 
-        if (value.type == Mi_VAL_BOOL)
+        if (value.type == MI_VAL_BOOL)
         {
           mi_symbol_table_set_variable_bool(table, stmt->as.assignment.identifier.str, value.as.number_value);
           return mi_runtime_value_create_bool(value.as.number_value);
         }
-        if (value.type == Mi_VAL_INT)
+        if (value.type == MI_VAL_INT)
         {
           mi_symbol_table_set_variable_int(table, stmt->as.assignment.identifier.str, (int) value.as.number_value);
           return mi_runtime_value_create_int((int) value.as.number_value);
         }
-        else if (value.type == Mi_VAL_FLOAT)
+        else if (value.type == MI_VAL_FLOAT)
         {
           mi_symbol_table_set_variable_float(table, stmt->as.assignment.identifier.str, value.as.number_value);
           return mi_runtime_value_create_float(value.as.number_value);
         }
-        else if (value.type == Mi_VAL_STRING)
+        else if (value.type == MI_VAL_STRING)
         {
           mi_symbol_table_set_variable_string(table, stmt->as.assignment.identifier.str, value.as.string_value);
           return mi_runtime_value_create_string(value.as.string_value);
@@ -383,7 +388,7 @@ MiValue mi_eval_statement(MiSymbolTable* table, ASTStatement* stmt)
     case AST_STATEMENT_IF: 
       {
         MiValue condition = condition = mi_eval_expression(table, stmt->as.if_stmt.condition);
-        ASSERT(condition.error_code == Mi_ERROR_SUCCESS && (condition.type == Mi_VAL_FLOAT || condition.type == Mi_VAL_INT || condition.type == Mi_VAL_BOOL ));
+        ASSERT(condition.error_code == MI_ERROR_SUCCESS && (condition.type == MI_VAL_FLOAT || condition.type == MI_VAL_INT || condition.type == MI_VAL_BOOL ));
 
         if (condition.as.number_value != 0) 
         {
@@ -406,7 +411,7 @@ MiValue mi_eval_statement(MiSymbolTable* table, ASTStatement* stmt)
         {
           // Eval Condition and break if false
           MiValue value = mi_eval_expression(table, stmt->as.while_stmt.condition);
-          ASSERT(value.error_code == Mi_ERROR_SUCCESS);
+          ASSERT(value.error_code == MI_ERROR_SUCCESS);
           if (value.as.number_value == false)
             break;
 
@@ -451,7 +456,7 @@ int mi_eval_program(MiSymbolTable* table, ASTProgram* program)
   while(statement != NULL)
   {
     last_value = mi_eval_statement(table, statement);
-    if (last_value.error_code != Mi_ERROR_SUCCESS)
+    if (last_value.error_code != MI_ERROR_SUCCESS)
       return (int) last_value.error_code;
 
     statement = statement->next;

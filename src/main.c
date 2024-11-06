@@ -1,24 +1,26 @@
 #include "common.h"
 #include "minima.h"
+#include "minima_eval.h"
+
 
 MiValue function_print(int param_count, MiValue* parameters)
 {
   if (param_count == 1)
   {
     MiValue* value = &parameters[0];
-    if (value->type == Mi_VAL_BOOL)
+    if (value->type == MI_VAL_BOOL)
     {
       printf("%s\n",((int) value->as.number_value) ? "true" : "false");
     }
-    else if (value->type == Mi_VAL_INT)
+    else if (value->type == MI_VAL_INT)
     {
       printf("%d\n", (int) value->as.number_value);
     }
-    else if (value->type == Mi_VAL_FLOAT)
+    else if (value->type == MI_VAL_FLOAT)
     {
       printf("%f\n", value->as.number_value);
     }
-    else if (value->type == Mi_VAL_STRING)
+    else if (value->type == MI_VAL_STRING)
     {
       printf("%s\n", value->as.string_value);
     }
@@ -30,6 +32,7 @@ MiValue function_print(int param_count, MiValue* parameters)
 
   return mi_runtime_value_create_void();
 }
+
 
 int test_language(int argc, char **argv)
 {
@@ -58,7 +61,7 @@ int test_language(int argc, char **argv)
   s->as.function.function_ptr = function_print;
   s->as.function.parameters = (MiVariable*) malloc(sizeof(MiVariable));
   s->as.function.parameters[0].name = "msg";
-  s->as.function.parameters[0].value.type = Mi_VAL_ANY;
+  s->as.function.parameters[0].value.type = MI_VAL_ANY;
   s->as.function.parameters[0].scopeLevel = 0;
 
   int result = mi_program_run(program);
@@ -78,23 +81,24 @@ int test_language(int argc, char **argv)
     if (symbol->type != MI_SYMBOL_VARIABLE)
       continue;
 
-    if (symbol->as.variable.value.type == EXPR_LITERAL_BOOL)
+    if (symbol->as.variable.value.type == MI_VAL_BOOL)
     {
       log_info("Variable %s:bool = %s\n", symbol->identifier.str, ((int) symbol->as.variable.value.as.number_value) ? "true" : "false");
     }
-    else if (symbol->as.variable.value.type == EXPR_LITERAL_INT)
+    else if (symbol->as.variable.value.type == MI_VAL_INT)
     {
       log_info("Variable %s:int = %d\n", symbol->identifier.str, (int) symbol->as.variable.value.as.number_value);
     }
-    else if (symbol->as.variable.value.type == EXPR_LITERAL_FLOAT)
+    else if (symbol->as.variable.value.type == MI_VAL_FLOAT)
     {
       log_info("Variable %s:float = %f\n", symbol->identifier.str, symbol->as.variable.value.as.number_value);
     }
-    else if (symbol->as.variable.value.type == EXPR_LITERAL_STRING)
+    else if (symbol->as.variable.value.type == MI_VAL_STRING)
     {
       log_info("Variable %s:string = %s\n", symbol->identifier.str, symbol->as.variable.value.as.string_value);
     }
-    else {
+    else
+    {
       log_info("Variable %s: unknown\n", symbol->identifier.str);
     }
   }
@@ -103,6 +107,7 @@ int test_language(int argc, char **argv)
   free(buffer);
   return result;
 }
+
 
 int main(int argc, char **argv)
 {

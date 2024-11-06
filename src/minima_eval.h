@@ -4,12 +4,24 @@
  *
  * Defines the symbol table for variable management, error handling, and evaluation 
  * functions to execute expressions and statements in the AST.
- * 
+ *
+ * This header organizes functions into groups based on their prefixes:
+ *
+ * - mi_symbol_table_*: Functions for managing the symbol table, including 
+ *   initialization, variable/function storage, and retrieval by identifier.
+ *
+ * - mi_runtime_*: Functions for creating runtime values for program evaluation and
+ *   initializing `MiValue` types as needed.
+ *
  * @author marciovmf
  */
 
 #ifndef MINIMA_EVAL_H
 #define MINIMA_EVAL_H
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #include "minima_ast.h"
 #include "common.h"
@@ -29,21 +41,27 @@
  */
 typedef enum
 {
-  Mi_ERROR_SUCCESS               = 0,       // No error.
-  Mi_ERROR_DIVIDE_BY_ZERO        = -1024,   // Error for division by zero.
-  Mi_ERROR_UNSUPPOMiED_OPERATION = -1025,   // Error for an unsupported operation.
-  Mi_ERROR_NOT_IMPLEMENTED       = -1026,   // Error for an unimplemented feature.
+  MI_ERROR_SUCCESS               = 0,       // No error.
+  MI_ERROR_DIVIDE_BY_ZERO        = -1024,   // Error for division by zero.
+  MI_ERROR_UNSUPPOMiED_OPERATION = -1025,   // Error for an unsupported operation.
+  MI_ERROR_NOT_IMPLEMENTED       = -1026,   // Error for an unimplemented feature.
 } MiError;
 
-typedef enum MiValueType_t
+typedef enum MiValueType_e
 {
-  Mi_VAL_INT,
-  Mi_VAL_FLOAT,
-  Mi_VAL_STRING,
-  Mi_VAL_BOOL,
-  Mi_VAL_VOID,
-  Mi_VAL_ANY // used of function parameters
+  MI_VAL_INT,
+  MI_VAL_FLOAT,
+  MI_VAL_STRING,
+  MI_VAL_BOOL,
+  MI_VAL_VOID,
+  MI_VAL_ANY // used of function parameters
 } MiValueType;
+
+typedef enum MiSymbolType_e
+{
+  MI_SYMBOL_VARIABLE,
+  MI_SYMBOL_FUNCTION
+} MiSymbolType;
 
 typedef struct MiValue_t
 {
@@ -74,7 +92,7 @@ typedef struct MiFunction_t
 typedef struct MiSymbol_t
 {
   Smallstr identifier;
-  enum { MI_SYMBOL_VARIABLE, MI_SYMBOL_FUNCTION } type;
+  MiSymbolType type;
   union
   {
     MiVariable variable;
@@ -84,10 +102,14 @@ typedef struct MiSymbol_t
 
 typedef struct SymbolTable_t
 {
-  MiSymbol entry[MI_Mi_MAX_SYMBOLS];   // Array of symbols (variables).
-  int count;                        // Number of variables currently stored.
+  MiSymbol entry[MI_Mi_MAX_SYMBOLS];    // Array of symbols (variables).
+  int count;                            // Number of variables currently stored.
 } MiSymbolTable;
 
+
+//
+// Public functions
+//
 
 /**
  * @brief Initializes the symbol table.
@@ -104,11 +126,6 @@ void mi_symbol_table_init(MiSymbolTable* table);
  * @return Pointer to the Symbol if found, or NULL if not found.
  */
 MiSymbol* mi_symbol_table_get_variable(MiSymbolTable* table, const char* identifier);
-
-
-//
-// Public functions
-//
 
 /**
  * @brief Evaluates the entire program by iterating through the AST.
@@ -158,6 +175,9 @@ MiValue mi_runtime_value_create_string(char* value);
  */
 MiValue mi_runtime_value_create_void(void);
 
+#ifdef __cplusplus
+extern {
+#endif
 
 #endif  // MINIMA_EVAL_H
 
