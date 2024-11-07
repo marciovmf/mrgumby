@@ -10,6 +10,36 @@ MiValue function_print(int param_count, MiValue* parameters)
     MiValue* value = &parameters[0];
     if (value->type == MI_VAL_BOOL)
     {
+      printf("%s",((int) value->as.number_value) ? "true" : "false");
+    }
+    else if (value->type == MI_VAL_INT)
+    {
+      printf("%d", (int) value->as.number_value);
+    }
+    else if (value->type == MI_VAL_FLOAT)
+    {
+      printf("%f", value->as.number_value);
+    }
+    else if (value->type == MI_VAL_STRING)
+    {
+      printf("%s", value->as.string_value);
+    }
+    else
+    {
+      log_info("Runtime value %llxn", value);
+    }
+  }
+
+  return mi_runtime_value_create_void();
+}
+
+MiValue function_print_line(int param_count, MiValue* parameters)
+{
+  if (param_count == 1)
+  {
+    MiValue* value = &parameters[0];
+    if (value->type == MI_VAL_BOOL)
+    {
       printf("%s\n",((int) value->as.number_value) ? "true" : "false");
     }
     else if (value->type == MI_VAL_INT)
@@ -32,7 +62,6 @@ MiValue function_print(int param_count, MiValue* parameters)
 
   return mi_runtime_value_create_void();
 }
-
 
 int test_language(int argc, char **argv)
 {
@@ -107,7 +136,6 @@ int test_language(int argc, char **argv)
   free(buffer);
   return result;
 }
-
 
 int main(int argc, char **argv)
 {

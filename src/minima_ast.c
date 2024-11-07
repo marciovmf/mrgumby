@@ -264,6 +264,17 @@ ASTExpression* mi_ast_expression_create_function_call(const char* identifier, AS
 // Helper functions for ASTStatement nodes
 //
 
+
+ASTStatement* mi_ast_statement_create_raw(char* start, size_t len)
+{
+  ASTStatement* stmt = MI_ASTCREATE_NODE(ASTStatement);
+  stmt->type = AST_STATEMENT_RAW;
+  stmt->as.raw.start = start;
+  stmt->as.raw.len = len;
+  stmt->next = NULL;
+  return stmt;
+}
+
 ASTStatement* mi_ast_statement_create_assignment(const char* identifier, ASTExpression* expression) 
 {
   ASTStatement* stmt = MI_ASTCREATE_NODE(ASTStatement);

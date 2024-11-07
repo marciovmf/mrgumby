@@ -17,6 +17,8 @@
 typedef enum TokenType_e
 {
   TOKEN_ERROR,              // Represents a tokenizer error
+  TOKEN_OPEN_CODE_BLOCK,    // <%
+  TOKEN_CLOSE_CODE_BLOCK,   // %>
   TOKEN_LOGICAL_AND,        // &&
   TOKEN_LOGICAL_OR,         // ||
   TOKEN_OP_ASSIGN,          // =
@@ -72,6 +74,7 @@ typedef struct Lexer_t
   size_t  position;     // Current position in the buffer
   int     line;         // Current line number
   int     column;       // Current column number
+  bool    raw_mode;
 } Lexer;
 
 #define report_error(lexer, message) log_error("Syntax error at line %d, column %d: %s\n",\
@@ -84,6 +87,8 @@ const char* token_get_name(TokenType token)
 {
   static const char *tokenNames[TOKEN_COUNT_] = {
     [TOKEN_ERROR]           = "Invalid",
+    [TOKEN_OPEN_CODE_BLOCK]= "Code block open",
+    [TOKEN_CLOSE_CODE_BLOCK]= "Code block close",
     [TOKEN_LOGICAL_AND]     = "Logical AND operator",
     [TOKEN_LOGICAL_OR]      = "Logical OR operator",
     [TOKEN_OP_ASSIGN]       = "Assignment operator",
@@ -203,7 +208,7 @@ static Token s_lexer_get_identifier(Lexer *lexer)
   Token token;
   int i = 0;
 
-  while (isalpha(lexer->current_char) || lexer->current_char == '_')
+  while (isalpha(lexer->current_char) || lexer->current_char == '_' ||  lexer->current_char == '.')
   {
     token.value[i++] = lexer->current_char;
     s_lexer_advance(lexer);
@@ -218,8 +223,6 @@ static Token s_lexer_get_identifier(Lexer *lexer)
   else if (strcmp(token.value, "while") == 0) token.type = TOKEN_WHILE;
   else if (strcmp(token.value, "true") == 0) token.type = TOKEN_LITERAL_BOOL;
   else if (strcmp(token.value, "false") == 0) token.type = TOKEN_LITERAL_BOOL;
-  //else if (strcmp(token.value, "function") == 0) token.type = TOKEN_FUNCTION;
-  //else if (strcmp(token.value, "endwhile") == 0) token.type = TOKEN_ENDWHILE;
   else token.type = TOKEN_IDENTIFIER;
 
   return token;
@@ -296,12 +299,32 @@ static Token s_lexer_get_next_token_(Lexer *lexer, bool suppress_errors)
     token.type = TOKEN_LITERAL_INT;
     return token;
   }
+  else if (lexer->current_char == '<' && lexer->next_char == '%')
+  {
+    token.type = TOKEN_OPEN_CODE_BLOCK;
+    token.value[0] = lexer->current_char;
+    token.value[1] = lexer->next_char;
+    token.value[2] = '\0';
+    s_lexer_advance(lexer);
+    s_lexer_advance(lexer);
+    return token;
+  }
+  else if (lexer->current_char == '%' && lexer->next_char == '>')
+  {
+    token.type = TOKEN_CLOSE_CODE_BLOCK;
+    token.value[0] = lexer->current_char;
+    token.value[1] = lexer->next_char;
+    token.value[2] = '\0';
+    s_lexer_advance(lexer);
+    s_lexer_advance(lexer);
+    return token;
+  }
   else if (lexer->current_char == '&' && lexer->next_char == '&')
   {
     token.type = TOKEN_LOGICAL_AND;
     token.value[0] = lexer->current_char;
     token.value[1] = lexer->next_char;
-    token.value[3] = '\0';
+    token.value[2] = '\0';
     s_lexer_advance(lexer);
     s_lexer_advance(lexer);
     return token;
@@ -311,7 +334,7 @@ static Token s_lexer_get_next_token_(Lexer *lexer, bool suppress_errors)
     token.type = TOKEN_LOGICAL_OR;
     token.value[0] = lexer->current_char;
     token.value[1] = lexer->next_char;
-    token.value[3] = '\0';
+    token.value[2] = '\0';
     s_lexer_advance(lexer);
     s_lexer_advance(lexer);
     return token;
@@ -321,7 +344,7 @@ static Token s_lexer_get_next_token_(Lexer *lexer, bool suppress_errors)
     token.type = TOKEN_OP_GTE;
     token.value[0] = lexer->current_char;
     token.value[1] = lexer->next_char;
-    token.value[3] = '\0';
+    token.value[2] = '\0';
     s_lexer_advance(lexer);
     s_lexer_advance(lexer);
     return token;
@@ -331,7 +354,7 @@ static Token s_lexer_get_next_token_(Lexer *lexer, bool suppress_errors)
     token.type = TOKEN_OP_LTE;
     token.value[0] = lexer->current_char;
     token.value[1] = lexer->next_char;
-    token.value[3] = '\0';
+    token.value[2] = '\0';
     s_lexer_advance(lexer);
     s_lexer_advance(lexer);
     return token;
@@ -341,7 +364,7 @@ static Token s_lexer_get_next_token_(Lexer *lexer, bool suppress_errors)
     token.type = TOKEN_OP_EQ;
     token.value[0] = lexer->current_char;
     token.value[1] = lexer->next_char;
-    token.value[3] = '\0';
+    token.value[2] = '\0';
     s_lexer_advance(lexer);
     s_lexer_advance(lexer);
     return token;
@@ -942,6 +965,39 @@ static ASTExpression* s_parse_expression(Lexer* lexer)
   return expression;
 };
 
+ASTStatement* s_parse_raw(Lexer* lexer)
+{
+  char* start = &lexer->buffer[lexer->position];
+  size_t len = 0;
+  while(true)
+  {
+    if (lexer->raw_mode == false  || lexer->current_char == 0)
+      break;
+
+    // Ignore new lines immediately after closing code blocks
+    if (*start == '\r' || *start == '\n' || *start == '\t')
+    {
+      start++;
+      s_lexer_advance(lexer);
+      continue;
+    }
+
+    // A raw block ends at EOF or <%
+    if (lexer->current_char == '<' && lexer->next_char == '%')
+    {
+      break;
+    }
+    len++;
+    s_lexer_advance(lexer);
+  }
+
+  if (len > 0)
+  {
+    return mi_ast_statement_create_raw(start, len);
+  }
+
+  return s_parse_statement(lexer);
+}
 
 /*
  * <Statement> -> ( <FunctionCall> | <InputStatement> | <ReturnStatement> | <AssignmentStatement> <FunctionDeclStatement> | <IfStatement> | <ForStatement> | <WhileStatement> | "{" <StatementList> "}")
@@ -953,6 +1009,18 @@ static ASTStatement* s_parse_statement(Lexer *lexer)
 
   switch (look_ahead_token1.type)
   {
+    case TOKEN_OPEN_CODE_BLOCK:
+      {
+        lexer->raw_mode = false;
+        s_lexer_skip_token(lexer, TOKEN_OPEN_CODE_BLOCK);
+        return s_parse_raw(lexer);
+      }
+    case TOKEN_CLOSE_CODE_BLOCK:
+      {
+        lexer->raw_mode = true;
+        s_lexer_skip_token(lexer, TOKEN_CLOSE_CODE_BLOCK);
+        return s_parse_raw(lexer);
+      }
     case TOKEN_OPEN_BRACE:
       {
         if (s_lexer_skip_token(lexer, TOKEN_OPEN_BRACE) == false)
@@ -1023,22 +1091,17 @@ static ASTStatement* s_parse_statement(Lexer *lexer)
   return NULL;
 }
 
-
 /*
  * <StatementList> -> <Statement> [ <StatementList> ]
  */
 static ASTStatement* s_parse_statement_list(Lexer* lexer)
 {
-  ASTStatement* first_statement = s_parse_statement(lexer);
+  //ASTStatement* first_statement = s_parse_statement(lexer);
+  ASTStatement* first_statement = s_parse_raw(lexer);
   ASTStatement* statement = first_statement;
 
   while(statement)
   {
-    //Token look_ahead_token = s_lexer_look_ahead(lexer);
-    //if (look_ahead_token.type != TOKEN_SEMICOLON)
-    //  break;
-    //s_lexer_skip_token(lexer, TOKEN_SEMICOLON);
-    //statement->next = s_parse_statement_list(lexer);
     statement->next = s_parse_statement(lexer);
     statement = statement->next;
   }
@@ -1051,8 +1114,10 @@ void s_lexer_init(Lexer *lexer, const char *buffer)
   lexer->buffer = (char *)buffer;
   lexer->position = 0;
   lexer->current_char = buffer[lexer->position]; // Start with the first character
+  lexer->next_char = lexer->current_char != 0 ? lexer->buffer[1] : 0;
   lexer->line = 1;
   lexer->column = 1;
+  lexer->raw_mode = true;
 }
 
 //

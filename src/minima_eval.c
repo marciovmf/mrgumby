@@ -326,6 +326,12 @@ MiValue mi_eval_statement(MiSymbolTable* table, ASTStatement* stmt)
 {
   switch (stmt->type) 
   {
+
+    case AST_STATEMENT_RAW: 
+      {
+        printf("%.*s", (int) stmt->as.raw.len, stmt->as.raw.start);
+        return mi_runtime_value_create_void();
+      }
     case AST_STATEMENT_ASSIGNMENT: 
       {
         MiValue value = mi_eval_expression(table, stmt->as.assignment.expression);
@@ -357,28 +363,6 @@ MiValue mi_eval_statement(MiSymbolTable* table, ASTStatement* stmt)
         }
         break;
       }
-      //case AST_STATEMENT_PRINT: 
-      //  {
-      //    MiValue value = eval_expression(table, stmt->as.print_expr);
-      //    if (value.type == EXPR_LITERAL_INT)
-      //    {
-      //      printf("%d\n", (int) value.as.number_value);
-      //    }
-      //    else if (value.type == EXPR_LITERAL_INT)
-      //    {
-      //      printf("%f\n", value.as.number_value);
-      //    }
-      //    else if (value.type == EXPR_LITERAL_STRING)
-      //    {
-      //      printf("%s\n", value.as.string_value);
-      //    }
-      //    else
-      //    {
-      //      ASSERT_BREAK();
-      //    }
-
-      //    return mi_runtime_value_create_void();
-      //  }
     case AST_STATEMENT_RETURN: 
       {
         //TODO: Implement AST_STATEMENT_RETURN

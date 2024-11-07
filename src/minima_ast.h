@@ -35,6 +35,7 @@ typedef struct ASTLogicalExpression_t     ASTLogicalExpression;
 typedef struct ASTFactor_t                ASTFactor; 
 typedef struct ASTTerm_t                  ASTTerm;
 typedef struct ASTProgram_t               ASTProgram;
+typedef struct ASTStatementRaw_t          ASTStatementRaw;
 
 typedef enum ASTFactorOperator_e
 {
@@ -75,6 +76,7 @@ typedef enum ASTLogicalOperator_e
 
 typedef enum ASTStatementType_e
 {
+  AST_STATEMENT_RAW,
   AST_STATEMENT_ASSIGNMENT,      // Assignment
   AST_STATEMENT_IF,              // If statement
   AST_STATEMENT_FOR,             // For loop
@@ -207,6 +209,12 @@ struct ASTStatementList_t
   size_t          capacity;   // Capacity of the array
 };
 
+struct ASTStatementRaw_t
+{
+  char* start;
+  size_t len;
+};
+
 struct ASTStatement_t
 {
   ASTStatementType type; // Statement type
@@ -217,6 +225,7 @@ struct ASTStatement_t
     ASTForStatement     for_stmt;       // For loop
     ASTWhileStatement   while_stmt;     // While statement
     ASTFunctionDecl     function_decl;  // Function declaration
+    ASTStatementRaw     raw;
     ASTStatement*       block_stmt;     // statement list
     ASTExpression*      expression;     // Return expression , Function call
   } as;
@@ -251,6 +260,8 @@ void mi_ast_expression_destroy(ASTExpression* expression);
 //
 // Helper functions for creating ASTStatement
 //
+
+ASTStatement* mi_ast_statement_create_raw(char* start, size_t len);
 ASTStatement* mi_ast_statement_create_assignment(const char* identifier, ASTExpression* expression);
 ASTStatement* mi_ast_statement_create_if(ASTExpression* condition, ASTStatement* if_branch, ASTStatement* else_branch);
 ASTStatement* mi_ast_statement_create_for(ASTStatement* init, ASTExpression* condition, ASTStatement* update, ASTStatement* body);
