@@ -41,10 +41,13 @@ extern "C" {
  */
 typedef enum
 {
-  MI_ERROR_SUCCESS               = 0,       // No error.
-  MI_ERROR_DIVIDE_BY_ZERO        = -1024,   // Error for division by zero.
-  MI_ERROR_UNSUPPOMiED_OPERATION = -1025,   // Error for an unsupported operation.
-  MI_ERROR_NOT_IMPLEMENTED       = -1026,   // Error for an unimplemented feature.
+  MI_ERROR_SUCCESS                            = 0,       // No error.
+  MI_ERROR_NOT_IMPLEMENTED                    = 1,   // Error for an unimplemented feature.
+  MI_ERROR_DIVIDE_BY_ZERO                     = 2,   // Error for division by zero.
+  MI_ERROR_UNSUPPORTED_OPERATION              = 3,   // Error for an unsupported operation.
+  MI_ERROR_UNINITIALIZED_VARIABLE_ACCESS      = 4,   // Error for acessing an uninitialized variable
+
+  MI_ERROR_COUNT_
 } MiError;
 
 typedef enum MiValueType_e

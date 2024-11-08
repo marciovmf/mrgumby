@@ -7,6 +7,27 @@
 // Runtime expression value
 //
 
+
+MiValue mi_eval_statement_list(MiSymbolTable* table, ASTStatement* first_stmt);
+
+const char* mi_error_name(MiError error)
+{
+  static const char *error_name[] =
+  {
+    [MI_ERROR_SUCCESS]                            = "Operation completed successfully",
+    [MI_ERROR_NOT_IMPLEMENTED]                    = "Feature not implemented",
+    [MI_ERROR_DIVIDE_BY_ZERO]                     = "Division by zero",
+    [MI_ERROR_UNSUPPORTED_OPERATION]              = "Operation is not supported",
+    [MI_ERROR_UNINITIALIZED_VARIABLE_ACCESS]      = "Attempted access to an uninitialized variable",
+  };
+
+  if (error >= 0 && error < MI_ERROR_COUNT_)
+  {
+    return error_name[error];
+  }
+  return "Unknown error";
+}
+
 MiValue mi_runtime_value_create_bool(bool value)
 {
   return (MiValue){ .type = MI_VAL_BOOL, .as.number_value = value, .error_code = MI_ERROR_SUCCESS };
@@ -58,7 +79,7 @@ MiSymbol* mi_symbol_table_get_variable(MiSymbolTable* table, const char* identif
 {
   MiSymbol* variable = s_symbol_table_get_variable(table, identifier);
   if (variable == NULL)
-    log_warning("Requested uninitialized variable '%s'", identifier);
+    log_error("Requested uninitialized variable '%s'", identifier);
 
   return variable;
 }
@@ -144,7 +165,6 @@ void mi_symbol_table_set_variable_string(MiSymbolTable* table, const char* ident
     table->count++;
   }
 }
-
 
 
 //
@@ -252,7 +272,7 @@ MiValue mi_eval_expression(MiSymbolTable* table, ASTExpression* expr)
           case OP_MOD:
             {
               if (resultType == EXPR_LITERAL_STRING)
-                return mi_runtime_value_create_error(MI_ERROR_UNSUPPOMiED_OPERATION);
+                return mi_runtime_value_create_error(MI_ERROR_UNSUPPORTED_OPERATION);
               else
                 return mi_runtime_value_create_int(((int)left.as.number_value % (int) right.as.number_value));
             }
@@ -265,7 +285,10 @@ MiValue mi_eval_expression(MiSymbolTable* table, ASTExpression* expr)
       } break;
     case EXPR_LVALUE:
       {
-        return mi_symbol_table_get_variable(table, expr->as.identifier.str)->as.variable.value;
+        MiSymbol* lvalue = mi_symbol_table_get_variable(table, expr->as.identifier.str);
+        if (lvalue == NULL)
+          return mi_runtime_value_create_error(MI_ERROR_UNINITIALIZED_VARIABLE_ACCESS);
+        return lvalue->as.variable.value;
       }
     case EXPR_UNARY:
       {
@@ -322,6 +345,7 @@ MiValue mi_eval_expression(MiSymbolTable* table, ASTExpression* expr)
   return mi_runtime_value_create_void();
 }
 
+
 MiValue mi_eval_statement(MiSymbolTable* table, ASTStatement* stmt) 
 {
   switch (stmt->type) 
@@ -335,7 +359,8 @@ MiValue mi_eval_statement(MiSymbolTable* table, ASTStatement* stmt)
     case AST_STATEMENT_ASSIGNMENT: 
       {
         MiValue value = mi_eval_expression(table, stmt->as.assignment.expression);
-        ASSERT(value.error_code == MI_ERROR_SUCCESS);
+        if (value.error_code != MI_ERROR_SUCCESS)
+          return value;
 
         if (value.type == MI_VAL_BOOL)
         {
@@ -372,14 +397,14 @@ MiValue mi_eval_statement(MiSymbolTable* table, ASTStatement* stmt)
     case AST_STATEMENT_IF: 
       {
         MiValue condition = condition = mi_eval_expression(table, stmt->as.if_stmt.condition);
-        ASSERT(condition.error_code == MI_ERROR_SUCCESS && (condition.type == MI_VAL_FLOAT || condition.type == MI_VAL_INT || condition.type == MI_VAL_BOOL ));
+        ASSERT(condition.type == MI_VAL_FLOAT || condition.type == MI_VAL_INT || condition.type == MI_VAL_BOOL);
 
         if (condition.as.number_value != 0) 
         {
-          mi_eval_statement(table, stmt->as.if_stmt.if_branch);
+          mi_eval_statement_list(table, stmt->as.if_stmt.if_branch);
         } else if (stmt->as.if_stmt.else_branch != NULL)
         {
-          mi_eval_statement(table, stmt->as.if_stmt.else_branch);
+          mi_eval_statement_list(table, stmt->as.if_stmt.else_branch);
         }
         return mi_runtime_value_create_void();
         break;
@@ -395,7 +420,9 @@ MiValue mi_eval_statement(MiSymbolTable* table, ASTStatement* stmt)
         {
           // Eval Condition and break if false
           MiValue value = mi_eval_expression(table, stmt->as.while_stmt.condition);
-          ASSERT(value.error_code == MI_ERROR_SUCCESS);
+          if(value.error_code != MI_ERROR_SUCCESS)
+            return value;
+
           if (value.as.number_value == false)
             break;
 
@@ -432,6 +459,18 @@ MiValue mi_eval_statement(MiSymbolTable* table, ASTStatement* stmt)
   return mi_runtime_value_create_void();
 }
 
+MiValue mi_eval_statement_list(MiSymbolTable* table, ASTStatement* first_stmt)
+{
+  ASTStatement* statement = first_stmt;
+  while(statement != NULL)
+  {
+    mi_eval_statement(table, statement);
+    statement = statement->next;
+  }
+
+  return mi_runtime_value_create_void();
+}
+
 int mi_eval_program(MiSymbolTable* table, ASTProgram* program) 
 {
   MiValue last_value = {0};
@@ -441,7 +480,11 @@ int mi_eval_program(MiSymbolTable* table, ASTProgram* program)
   {
     last_value = mi_eval_statement(table, statement);
     if (last_value.error_code != MI_ERROR_SUCCESS)
-      return (int) last_value.error_code;
+    {
+      int code = last_value.error_code;
+      log_error("Run-time error '%04d': %s.\n", code, mi_error_name(last_value.error_code));
+      return code;
+    }
 
     statement = statement->next;
   }

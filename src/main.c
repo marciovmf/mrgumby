@@ -94,6 +94,8 @@ int test_language(int argc, char **argv)
   s->as.function.parameters[0].scopeLevel = 0;
 
   int result = mi_program_run(program);
+
+#if 0
   log_info("program returned %d\n", result);
 
   for (int i = 0; i < program->symbols.count; i++)
@@ -131,7 +133,7 @@ int test_language(int argc, char **argv)
       log_info("Variable %s: unknown\n", symbol->identifier.str);
     }
   }
-
+#endif
   mi_ast_program_destroy(program->ast);
   free(buffer);
   return result;
