@@ -17,8 +17,8 @@
 typedef enum TokenType_e
 {
   TOKEN_ERROR,              // Represents a tokenizer error
-  TOKEN_OPEN_CODE_BLOCK,    // <%
-  TOKEN_CLOSE_CODE_BLOCK,   // %>
+  TOKEN_OPEN_CODE_BLOCK,    // <?
+  TOKEN_CLOSE_CODE_BLOCK,   // ?>
   TOKEN_LOGICAL_AND,        // &&
   TOKEN_LOGICAL_OR,         // ||
   TOKEN_OP_ASSIGN,          // =
@@ -87,7 +87,7 @@ const char* token_get_name(TokenType token)
 {
   static const char *tokenNames[TOKEN_COUNT_] = {
     [TOKEN_ERROR]           = "Invalid",
-    [TOKEN_OPEN_CODE_BLOCK]= "Code block open",
+    [TOKEN_OPEN_CODE_BLOCK] = "Code block open",
     [TOKEN_CLOSE_CODE_BLOCK]= "Code block close",
     [TOKEN_LOGICAL_AND]     = "Logical AND operator",
     [TOKEN_LOGICAL_OR]      = "Logical OR operator",
@@ -305,7 +305,7 @@ static Token s_lexer_get_next_token_(Lexer *lexer, bool suppress_errors)
     token.type = TOKEN_LITERAL_INT;
     return token;
   }
-  else if (lexer->current_char == '<' && lexer->next_char == '%')
+  else if (lexer->current_char == '<' && lexer->next_char == '?')
   {
     token.type = TOKEN_OPEN_CODE_BLOCK;
     token.value[0] = lexer->current_char;
@@ -315,7 +315,7 @@ static Token s_lexer_get_next_token_(Lexer *lexer, bool suppress_errors)
     s_lexer_advance(lexer);
     return token;
   }
-  else if (lexer->current_char == '%' && lexer->next_char == '>')
+  else if (lexer->current_char == '?' && lexer->next_char == '>')
   {
     token.type = TOKEN_CLOSE_CODE_BLOCK;
     token.value[0] = lexer->current_char;
@@ -989,7 +989,7 @@ ASTStatement* s_parse_raw(Lexer* lexer)
     }
 
     // A raw block ends at EOF or <%
-    if (lexer->current_char == '<' && lexer->next_char == '%')
+    if (lexer->current_char == '<' && lexer->next_char == '?')
     {
       break;
     }
