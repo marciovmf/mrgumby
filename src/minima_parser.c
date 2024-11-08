@@ -173,6 +173,12 @@ static void s_lexer_look_ahead_2(Lexer* lexer, Token* token1, Token* token2)
 {
   Lexer chekpoint = *lexer;
   *token1 = s_lexer_get_next_token_(lexer, true);
+
+  // we don't want to start parsing stuff not meant to be parsed.
+  // if somethig is put past a close block token, consider it is in raw mode
+  if (token1->type == TOKEN_CLOSE_CODE_BLOCK)
+    lexer->raw_mode = true;
+
   *token2 = s_lexer_get_next_token_(lexer, true);
   *lexer = chekpoint;
 }
