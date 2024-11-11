@@ -80,6 +80,7 @@ typedef struct Lexer_t
 #define report_error(lexer, message) log_error("Syntax error at line %d, column %d: %s\n",\
     lexer->line, lexer->column, message);
 
+
 #define report_error_unexpected_token(lexer, token_type) log_error("Sytax error at %d, %d: Unexpected '%s' token \n",\
     lexer->line, lexer->column, token_get_name(token_type))
 
@@ -139,6 +140,8 @@ static ASTExpression* s_parse_term(Lexer* lexer);
 static ASTExpression* s_parse_expression(Lexer* lexer);
 static ASTStatement* s_parse_statement(Lexer *lexer);
 static ASTStatement* s_parse_statement_list(Lexer* lexer);
+static ASTExpression* s_parse_logical_expression(Lexer* lexer);
+static ASTExpression* s_parse_logical_expression_and(Lexer* lexer);
 
 
 static void s_lexer_advance(Lexer *lexer)
@@ -235,49 +238,38 @@ static Token s_lexer_get_identifier(Lexer *lexer)
 }
 
 
+//TODO: Fix this! Very long string literals will cause a crash here.
 static Token s_lexer_get_literal_string(Lexer *lexer)
 {
   Token out;
 
-  int i = 0;
   // Expecting a starting quote
   if (lexer->current_char == '"')
   {
+    int i = 0;
     bool handle_escape_char = false;
     s_lexer_advance(lexer);  // Move past the opening quote
     while (lexer->current_char != '"' && lexer->current_char != '\0')
     {
-
       char c = lexer->current_char;
 
       // handle scape characters
       if (handle_escape_char)
       {
-        if (c == 'n')
-        {
-          c = '\n';
-          i--;
-        }
-        else if (c == 't')
-        {
-          c = '\t';
-          i--;
-        }
-        else if (c == '\\')
-        {
-          c = '\\';
-          i--;
-        }
-        else if (c == 'r')
-        {
-          c = '\r';
-          i--;
-        }
-        else
-          log_warning("Warning at line %d, column %d: Unknown escape character '%c'\n", lexer->line, lexer->column, c);
+        if (c == 'n')       { c = '\n'; i--; }
+        else if (c == 't')  { c = '\t'; i--; }
+        else if (c == '\\') { c = '\\'; i--; }
+        else if (c == 'r')  { c = '\r'; i--; }
+        else log_warning("Warning at line %d, column %d: Unknown escape character '%c'\n", lexer->line, lexer->column, c);
+
+        handle_escape_char = false;
       }
-      
-      handle_escape_char = c == '\\';
+      else
+      {
+        handle_escape_char = c == '\\';
+      }
+
+      // output character
       out.value[i++] = c;
       s_lexer_advance(lexer);
     }
@@ -593,7 +585,8 @@ static bool s_lexer_require_token(Lexer* lexer, TokenType expected_type, Token* 
 */
 static ASTExpression* s_parse_arg_list(Lexer* lexer)
 {
-  ASTExpression* arg_list = s_parse_expression(lexer);
+  //ASTExpression* arg_list = s_parse_expression(lexer);
+  ASTExpression* arg_list = s_parse_logical_expression(lexer);
   ASTExpression* args = arg_list;
 
   while (args != NULL)
@@ -603,7 +596,8 @@ static ASTExpression* s_parse_arg_list(Lexer* lexer)
       break;
 
     s_lexer_skip_token(lexer, TOKEN_COMMA);
-    args->next = s_parse_expression(lexer);
+    //args->next = s_parse_expression(lexer);
+    args->next = s_parse_logical_expression(lexer);
     args = args->next;
   }
 
@@ -646,7 +640,7 @@ static ASTExpression* s_parse_function_call(Lexer* lexer)
 
 
 /*
- * <Factor> -> ( int_literal | float_literal | string_literal | bool_literal | <lvalue> | <FunctionCall> | "(" <Expression> ")" )
+ * <Factor> -> ( int_literal | float_literal | string_literal | bool_literal | <lvalue> | <FunctionCall> | "(" <LogicalExpression> ")" )
  */ 
 static ASTExpression* s_parse_factor(Lexer* lexer)
 {
@@ -656,7 +650,8 @@ static ASTExpression* s_parse_factor(Lexer* lexer)
   if (look_ahead_token1.type == TOKEN_OPEN_PAREN)
   {
     s_lexer_skip_token(lexer, TOKEN_OPEN_PAREN);
-    ASTExpression* expression = s_parse_expression(lexer);
+    //ASTExpression* expression = s_parse_expression(lexer);
+    ASTExpression* expression = s_parse_logical_expression(lexer);
 
     if (!s_lexer_skip_token(lexer, TOKEN_CLOSE_PAREN))
     {
@@ -820,7 +815,7 @@ static ASTStatement* s_parse_assignment_statement(Lexer* lexer)
   if (!s_lexer_skip_token(lexer, TOKEN_OP_ASSIGN))
     return NULL;
 
-  ASTExpression* rhs = s_parse_expression(lexer);
+  ASTExpression* rhs = s_parse_logical_expression(lexer);
   if (rhs == NULL)
     return NULL;
   return mi_ast_statement_create_assignment(identifier.value, rhs);
@@ -836,7 +831,7 @@ static ASTStatement* s_parse_if_statement(Lexer* lexer)
   if (s_lexer_skip_token(lexer, TOKEN_IF) == false
       || s_lexer_skip_token(lexer, TOKEN_OPEN_PAREN) == false)
     return NULL;
-  ASTExpression* condition = s_parse_expression(lexer);
+  ASTExpression* condition = s_parse_logical_expression(lexer);
   if (condition == NULL)
     return NULL;
 
@@ -871,7 +866,7 @@ static ASTStatement* s_parse_while_statement(Lexer* lexer)
   if (s_lexer_skip_token(lexer, TOKEN_WHILE) == false
       || s_lexer_skip_token(lexer, TOKEN_OPEN_PAREN) == false)
     return NULL;
-  ASTExpression* condition = s_parse_expression(lexer);
+  ASTExpression* condition = s_parse_logical_expression(lexer);
   if (condition == NULL)
     return NULL;
 
@@ -910,7 +905,7 @@ static ASTStatement* s_parse_for_statement(Lexer* lexer)
     return NULL;
   }
 
-  ASTExpression* condition = s_parse_expression(lexer);
+  ASTExpression* condition = s_parse_logical_expression(lexer);
   if (s_lexer_skip_token(lexer, TOKEN_SEMICOLON) == false)
   {
     mi_ast_statement_destroy(init);
@@ -946,10 +941,10 @@ static ASTStatement* s_parse_for_statement(Lexer* lexer)
  */
 static ASTStatement* s_parse_return_statement(Lexer* lexer)
 {
-  ASTExpression* expression = s_parse_expression(lexer);
+  ASTExpression* expression = s_parse_logical_expression(lexer);
   if (expression == NULL)
     return NULL;
-  return mi_ast_statement_create_return(s_parse_expression(lexer));
+  return mi_ast_statement_create_return(s_parse_logical_expression(lexer));
 };
 
 
@@ -970,6 +965,63 @@ static bool s_parse_function_declaration_statement(Lexer* lexer)
 {
   UNUSED(lexer);
   return false;
+}
+
+
+static ASTExpression* s_parse_logical_expression_and(Lexer* lexer)
+{
+  ASTExpression* expression = s_parse_expression(lexer);
+  if (expression == NULL)
+    return NULL;
+
+  while(true)
+  {
+    Token look_ahead_token = s_lexer_look_ahead(lexer);
+    ASTLogicalOperator op;
+    if (look_ahead_token.type == TOKEN_LOGICAL_AND)
+      op = OP_LOGICAL_AND;
+    else
+      break;
+
+    if (s_lexer_skip_token(lexer, look_ahead_token.type) == false)
+      return NULL;
+
+    ASTExpression* rhs = s_parse_expression(lexer);
+    if (rhs == NULL)
+      break;
+
+    expression = mi_ast_expression_create_logical(expression, op, rhs);
+  }
+
+  return expression;
+}
+
+static ASTExpression* s_parse_logical_expression(Lexer* lexer)
+{
+  ASTExpression* expression = s_parse_logical_expression_and(lexer);
+  if (expression == NULL)
+    return NULL;
+
+  while(true)
+  {
+    Token look_ahead_token = s_lexer_look_ahead(lexer);
+    ASTLogicalOperator op;
+    if (look_ahead_token.type == TOKEN_LOGICAL_OR)
+      op = OP_LOGICAL_OR;
+    else
+      break;
+
+    if (s_lexer_skip_token(lexer, look_ahead_token.type) == false)
+      return NULL;
+
+    ASTExpression* rhs = s_parse_logical_expression_and(lexer);
+    if (rhs == NULL)
+      break;
+
+    expression = mi_ast_expression_create_logical(expression, op, rhs);
+  }
+
+  return expression;
 }
 
 
@@ -1014,6 +1066,9 @@ static ASTExpression* s_parse_expression(Lexer* lexer)
   return expression;
 };
 
+/**
+ * A raw expression is anything outside of <? ?> block
+ */
 ASTStatement* s_parse_raw(Lexer* lexer)
 {
   char* start = &lexer->buffer[lexer->position];
@@ -1145,7 +1200,6 @@ static ASTStatement* s_parse_statement(Lexer *lexer)
  */
 static ASTStatement* s_parse_statement_list(Lexer* lexer)
 {
-  //ASTStatement* first_statement = s_parse_statement(lexer);
   ASTStatement* first_statement = s_parse_raw(lexer);
   ASTStatement* statement = first_statement;
 

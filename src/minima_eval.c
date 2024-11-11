@@ -306,6 +306,28 @@ MiValue mi_eval_expression(MiSymbolTable* table, ASTExpression* expr)
         return value;
         break;
       }
+
+    case EXPR_LOGICAL:
+      {
+        //TODO: validate conversion between types for boolean comparisons
+        MiValue left = mi_eval_expression(table, expr->as.term_expr.left);
+        MiValue right = mi_eval_expression(table, expr->as.term_expr.right);
+
+        switch (expr->as.logical_expr.op)
+        {
+          case OP_LOGICAL_OR:
+            return mi_runtime_value_create_bool(left.as.number_value || right.as.number_value);
+            break;
+          case OP_LOGICAL_AND:
+            return mi_runtime_value_create_bool(left.as.number_value && right.as.number_value);
+            break;
+          default:
+            log_and_break("Unknown expression type");
+            break;
+        }
+
+        break;
+      }
     case EXPR_COMPARISON:
       {
         //TODO: validate conversion between types for boolean comparisons
@@ -344,7 +366,6 @@ MiValue mi_eval_expression(MiSymbolTable* table, ASTExpression* expr)
   }
   return mi_runtime_value_create_void();
 }
-
 
 MiValue mi_eval_statement(MiSymbolTable* table, ASTStatement* stmt) 
 {

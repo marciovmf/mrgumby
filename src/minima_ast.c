@@ -180,8 +180,8 @@ ASTExpression* mi_ast_expression_create_unary(ASTUnaryOperator op, ASTExpression
 
 ASTExpression* mi_ast_expression_create_logical(ASTExpression* left, ASTLogicalOperator op, ASTExpression* right) 
 {
-  ASSERT(left != NULL && (left->type == EXPR_TERM || EXPRESSION_IS_LITERAL_OR_LVALUE(left)));
-  ASSERT(right != NULL && (right->type == EXPR_TERM || EXPRESSION_IS_LITERAL_OR_LVALUE(right)));
+  ASSERT(left   != NULL && (left->type == EXPR_LOGICAL || left->type == EXPR_COMPARISON || left->type == EXPR_TERM || EXPRESSION_IS_LITERAL_OR_LVALUE(left)));
+  ASSERT(right  != NULL && (right->type == EXPR_LOGICAL || right->type == EXPR_COMPARISON || right->type == EXPR_TERM || EXPRESSION_IS_LITERAL_OR_LVALUE(right)));
   ASTExpression* expr = MI_ASTCREATE_NODE(ASTExpression);
   expr->type = EXPR_LOGICAL;
   expr->as.logical_expr.left = left;
