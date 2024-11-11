@@ -7,7 +7,6 @@
 // Runtime expression value
 //
 
-
 MiValue mi_eval_statement_list(MiSymbolTable* table, ASTStatement* first_stmt);
 
 const char* mi_error_name(MiError error)
@@ -61,13 +60,25 @@ inline MiValue mi_runtime_value_create_error(MiError error)
 void mi_symbol_table_init(MiSymbolTable* table) 
 {
   table->count = 0;
+  table->scope = 0;
+}
+
+static void s_mi_symbol_table_scope_begin(MiSymbolTable* table)
+{
+  table->scope++;
+}
+
+static void s_mi_symbol_table_scope_end(MiSymbolTable* table)
+{
+  //TODO: Destroy out of scope variables;
+  table->scope--;
 }
 
 inline MiSymbol* s_symbol_table_get_variable(MiSymbolTable* table, const char* identifier) 
 {
-  for (int i = 0; i < table->count; i++) 
+  for (unsigned int i = 0; i < table->count; i++) 
   {
-    if (strcmp(table->entry[i].identifier.str, identifier) == 0 && table->entry[i].type == MI_SYMBOL_VARIABLE) 
+    if (strcmp(table->entry[i].identifier.str, identifier) == 0 && table->entry[i].type == MI_SYMBOL_VARIABLE && table->entry[i].as.variable.scope <= table->scope) 
     {
       return &table->entry[i];
     }
@@ -86,7 +97,7 @@ MiSymbol* mi_symbol_table_get_variable(MiSymbolTable* table, const char* identif
 
 MiSymbol* mi_symbol_table_get_function(MiSymbolTable* table, const char* identifier) 
 {
-  for (int i = 0; i < table->count; i++) 
+  for (unsigned int i = 0; i < table->count; i++) 
   {
     if (strcmp(table->entry[i].identifier.str, identifier) == 0 && table->entry[i].type == MI_SYMBOL_FUNCTION) 
     {
@@ -108,6 +119,7 @@ void mi_symbol_table_set_variable_bool(MiSymbolTable* table, const char* identif
   else
   {
     smallstr(&table->entry[table->count].identifier, identifier);
+    table->entry[table->count].as.variable.scope = table->scope;
     table->entry[table->count].type = MI_SYMBOL_VARIABLE;
     table->entry[table->count].as.variable.name = table->entry[table->count].identifier.str;
     table->entry[table->count].as.variable.value = mi_runtime_value_create_bool(value);
@@ -125,6 +137,7 @@ void mi_symbol_table_set_variable_int(MiSymbolTable* table, const char* identifi
   else
   {
     smallstr(&table->entry[table->count].identifier, identifier);
+    table->entry[table->count].as.variable.scope = table->scope;
     table->entry[table->count].type = MI_SYMBOL_VARIABLE;
     table->entry[table->count].as.variable.name = table->entry[table->count].identifier.str;
     table->entry[table->count].as.variable.value = mi_runtime_value_create_int(value);
@@ -142,6 +155,7 @@ void mi_symbol_table_set_variable_float(MiSymbolTable* table, const char* identi
   else
   {
     smallstr(&table->entry[table->count].identifier, identifier);
+    table->entry[table->count].as.variable.scope = table->scope;
     table->entry[table->count].type = MI_SYMBOL_VARIABLE;
     table->entry[table->count].as.variable.name = table->entry[table->count].identifier.str;
     table->entry[table->count].as.variable.value = mi_runtime_value_create_float(value);
@@ -159,6 +173,7 @@ void mi_symbol_table_set_variable_string(MiSymbolTable* table, const char* ident
   else
   {
     smallstr(&table->entry[table->count].identifier, identifier);
+    table->entry[table->count].as.variable.scope = table->scope;
     table->entry[table->count].type = MI_SYMBOL_VARIABLE;
     table->entry[table->count].as.variable.name = table->entry[table->count].identifier.str;
     table->entry[table->count].as.variable.value = mi_runtime_value_create_string(value);
@@ -371,7 +386,6 @@ MiValue mi_eval_statement(MiSymbolTable* table, ASTStatement* stmt)
 {
   switch (stmt->type) 
   {
-
     case AST_STATEMENT_RAW: 
       {
         printf("%.*s", (int) stmt->as.raw.len, stmt->as.raw.start);
@@ -422,10 +436,15 @@ MiValue mi_eval_statement(MiSymbolTable* table, ASTStatement* stmt)
 
         if (condition.as.number_value != 0) 
         {
+          s_mi_symbol_table_scope_begin(table);
           mi_eval_statement_list(table, stmt->as.if_stmt.if_branch);
-        } else if (stmt->as.if_stmt.else_branch != NULL)
+          s_mi_symbol_table_scope_end(table);
+        }
+        else if (stmt->as.if_stmt.else_branch != NULL)
         {
+          table->scope++;
           mi_eval_statement_list(table, stmt->as.if_stmt.else_branch);
+          table->scope--;
         }
         return mi_runtime_value_create_void();
         break;
@@ -449,11 +468,13 @@ MiValue mi_eval_statement(MiSymbolTable* table, ASTStatement* stmt)
 
           // Eval block
           ASTStatement* statement = stmt->as.while_stmt.body;
+          s_mi_symbol_table_scope_begin(table);
           while(statement != NULL)
           {
             mi_eval_statement(table, statement);
             statement = statement->next;
           }
+          s_mi_symbol_table_scope_end(table);
         }
 
         break;

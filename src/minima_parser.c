@@ -32,7 +32,7 @@ typedef enum TokenType_e
   TOKEN_CLOSE_PAREN,        // )
   TOKEN_OPEN_BRACE,         // {
   TOKEN_CLOSE_BRACE,        // }
-  TOKEN_OPEN_BACKET,        // [
+  TOKEN_OPEN_BRACKET,        // [
   TOKEN_CLOSE_BRACKET,      // ]
   TOKEN_ASTERISK,           // *
   TOKEN_SLASH,              // /
@@ -103,7 +103,7 @@ const char* token_get_name(TokenType token)
     [TOKEN_CLOSE_PAREN]     = "Close parenthesis",
     [TOKEN_OPEN_BRACE]      = "Open brace",
     [TOKEN_CLOSE_BRACE]     = "Close brace",
-    [TOKEN_OPEN_BACKET]     = "Open bracket",
+    [TOKEN_OPEN_BRACKET]    = "Open bracket",
     [TOKEN_CLOSE_BRACKET]   = "Close bracket",
     [TOKEN_ASTERISK]        = "Multiplication operator",
     [TOKEN_SLASH]           = "Division operator",
@@ -460,6 +460,22 @@ static Token s_lexer_get_next_token_(Lexer *lexer, bool suppress_errors)
     s_lexer_advance(lexer);
     return token;
   }
+  else if (lexer->current_char == '[')
+  {
+    token.type = TOKEN_OPEN_BRACKET;
+    token.value[0] = lexer->current_char;
+    token.value[1] = '\0';
+    s_lexer_advance(lexer);
+    return token;
+  }
+  else if(lexer->current_char == ']')
+  {
+    token.type = TOKEN_CLOSE_BRACKET;
+    token.value[0] = lexer->current_char;
+    token.value[1] = '\0';
+    s_lexer_advance(lexer);
+    return token;
+  }
   else if (lexer->current_char == '+')
   {
     token.type = TOKEN_PLUS;
@@ -581,8 +597,8 @@ static bool s_lexer_require_token(Lexer* lexer, TokenType expected_type, Token* 
 
 
 /*
-* <ArgList> -> [ <Expression> ( "," <Expression> )* ]
-*/
+ * <ArgList> -> [ <Expression> ( "," <Expression> )* ]
+ */
 static ASTExpression* s_parse_arg_list(Lexer* lexer)
 {
   //ASTExpression* arg_list = s_parse_expression(lexer);
@@ -1139,7 +1155,6 @@ static ASTStatement* s_parse_statement(Lexer *lexer)
 
         return block;
       }
-
     case TOKEN_IDENTIFIER:
       {
         if (look_ahead_token2.type == TOKEN_OPEN_PAREN)
@@ -1160,7 +1175,6 @@ static ASTStatement* s_parse_statement(Lexer *lexer)
         }
         break;
       }
-
     case TOKEN_RETURN:
       {
         ASTStatement* statement = s_parse_return_statement(lexer);
@@ -1168,22 +1182,18 @@ static ASTStatement* s_parse_statement(Lexer *lexer)
           return statement;
         break;
       }
-
     case TOKEN_FOR:
       {
         return s_parse_for_statement(lexer);
         break;
       }
-
     case TOKEN_WHILE:
       {
         return s_parse_while_statement(lexer);
         break;
       }
-
     case TOKEN_IF:
       return s_parse_if_statement(lexer);
-
     default:
       if (look_ahead_token1.type == TOKEN_EOF)
       {
@@ -1191,7 +1201,6 @@ static ASTStatement* s_parse_statement(Lexer *lexer)
         return NULL;
       }
   }
-
   return NULL;
 }
 

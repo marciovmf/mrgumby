@@ -81,7 +81,7 @@ typedef struct MiVariable_t
 {
   char*     name;
   MiValue   value;
-  int       scopeLevel;
+  unsigned int scope;
 } MiVariable;
 
 typedef struct MiFunction_t
@@ -106,7 +106,8 @@ typedef struct MiSymbol_t
 typedef struct SymbolTable_t
 {
   MiSymbol entry[MI_Mi_MAX_SYMBOLS];    // Array of symbols (variables).
-  int count;                            // Number of variables currently stored.
+  unsigned int count;                   // Number of variables currently stored.
+  unsigned int scope;                   // current scope level
 } MiSymbolTable;
 
 
@@ -138,6 +139,7 @@ MiSymbol* mi_symbol_table_get_variable(MiSymbolTable* table, const char* identif
  * @return Exit code or runtime status of the program execution.
  */
 int mi_eval_program(MiSymbolTable* table, ASTProgram* program);
+
 
 /**
  * @brief Creates a boolean runtime value
