@@ -293,16 +293,27 @@ static Token s_lexer_get_next_token_(Lexer *lexer, bool suppress_errors)
   {
     return s_lexer_get_identifier(lexer);
   } 
-  else if (isdigit(lexer->current_char))
+  else if (isdigit(lexer->current_char) || lexer->current_char == '.')
   {
+    int dot_count = 0;
+    if (lexer->current_char == '.')
+      dot_count++;
+
     int i = 0;
-    while (isdigit(lexer->current_char))
+    while (isdigit(lexer->current_char) || (dot_count <= 1 && lexer->current_char == '.'))
     {
+      if (lexer->current_char == '.')
+        dot_count++;
+
       token.value[i++] = lexer->current_char;
       s_lexer_advance(lexer);
     }
     token.value[i] = '\0';
-    token.type = TOKEN_LITERAL_INT;
+
+    if (dot_count == 0)
+      token.type = TOKEN_LITERAL_INT;
+    else
+      token.type = TOKEN_LITERAL_FLOAT;
     return token;
   }
   else if (lexer->current_char == '<' && lexer->next_char == '?')
@@ -642,7 +653,7 @@ static ASTExpression* s_parse_factor(Lexer* lexer)
     Token literal_float;
     if (!s_lexer_require_token(lexer, TOKEN_LITERAL_FLOAT, &literal_float))
       return NULL;
-    return mi_ast_expression_create_literal_int(atoi(literal_float.value));
+    return mi_ast_expression_create_literal_float(atof(literal_float.value));
   }
   else if (look_ahead_token1.type == TOKEN_LITERAL_BOOL)
   {

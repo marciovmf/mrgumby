@@ -187,23 +187,23 @@ MiValue mi_eval_expression(MiSymbolTable* table, ASTExpression* expr)
       {
         MiValue left = mi_eval_expression(table, expr->as.term_expr.left);
         MiValue right = mi_eval_expression(table, expr->as.term_expr.right);
-        ASTExpressionType resultType;
+        MiValueType resultType;
 
-        if (left.type == EXPR_LITERAL_STRING || right.type == EXPR_LITERAL_STRING)
-          resultType = EXPR_LITERAL_STRING;
-        if (left.type == EXPR_LITERAL_FLOAT || right.type == EXPR_LITERAL_FLOAT)
-          resultType = EXPR_LITERAL_FLOAT;
+        if (left.type == MI_VAL_STRING || right.type == MI_VAL_STRING)
+          resultType = MI_VAL_STRING;
+        if (left.type == MI_VAL_FLOAT || right.type == MI_VAL_FLOAT)
+          resultType = MI_VAL_FLOAT;
         else
-          resultType = EXPR_LITERAL_INT;
+          resultType = MI_VAL_INT;
         switch (expr->as.factor_expr.op) 
         {
           case OP_ADD:
             {
-              if (resultType == EXPR_LITERAL_INT)
+              if (resultType == MI_VAL_INT)
                 return mi_runtime_value_create_int((int)(left.as.number_value + right.as.number_value));
-              else if (resultType == EXPR_LITERAL_FLOAT)
-                return mi_runtime_value_create_float((int)left.as.number_value + right.as.number_value);
-              else if (resultType == EXPR_LITERAL_STRING)
+              else if (resultType == MI_VAL_FLOAT)
+                return mi_runtime_value_create_float(left.as.number_value + right.as.number_value);
+              else if (resultType == MI_VAL_STRING)
                 //TODO: String concatenation and conversion
                 return mi_runtime_value_create_error(MI_ERROR_NOT_IMPLEMENTED);
               else
@@ -211,11 +211,11 @@ MiValue mi_eval_expression(MiSymbolTable* table, ASTExpression* expr)
             }
           case OP_SUBTRACT:
             {
-              if (resultType == EXPR_LITERAL_INT)
+              if (resultType == MI_VAL_INT)
                 return mi_runtime_value_create_int((int)(left.as.number_value - right.as.number_value));
-              else if (resultType == EXPR_LITERAL_FLOAT)
+              else if (resultType == MI_VAL_FLOAT)
                 return mi_runtime_value_create_float(left.as.number_value - right.as.number_value);
-              else if (resultType == EXPR_LITERAL_STRING)
+              else if (resultType == MI_VAL_STRING)
                 //TODO: String concatenation and conversion
                 return mi_runtime_value_create_error(MI_ERROR_NOT_IMPLEMENTED);
               else
@@ -232,23 +232,23 @@ MiValue mi_eval_expression(MiSymbolTable* table, ASTExpression* expr)
       {
         MiValue left =  mi_eval_expression(table, expr->as.factor_expr.left);
         MiValue right = mi_eval_expression(table, expr->as.factor_expr.right);
-        ASTExpressionType resultType;
+        MiValueType resultType;
 
-        if (left.type == EXPR_LITERAL_STRING || right.type == EXPR_LITERAL_STRING)
-          resultType = EXPR_LITERAL_STRING;
-        if (left.type == EXPR_LITERAL_FLOAT || right.type == EXPR_LITERAL_FLOAT)
-          resultType = EXPR_LITERAL_FLOAT;
+        if (left.type == MI_VAL_STRING || right.type == MI_VAL_STRING)
+          resultType = MI_VAL_STRING;
+        if (left.type == MI_VAL_FLOAT || right.type == MI_VAL_FLOAT)
+          resultType = MI_VAL_FLOAT;
         else
-          resultType = EXPR_LITERAL_INT;
+          resultType = MI_VAL_INT;
         switch (expr->as.term_expr.op) 
         {
           case OP_MULTIPLY:
             {
-              if (resultType == EXPR_LITERAL_INT)
+              if (resultType == MI_VAL_INT)
                 return mi_runtime_value_create_int((int)(left.as.number_value * right.as.number_value));
-              else if (resultType == EXPR_LITERAL_FLOAT)
+              else if (resultType == MI_VAL_FLOAT)
                 return mi_runtime_value_create_float(left.as.number_value * right.as.number_value);
-              else if (resultType == EXPR_LITERAL_STRING)
+              else if (resultType == MI_VAL_STRING)
                 //TODO: String concatenation and conversion 
                 return mi_runtime_value_create_error(MI_ERROR_NOT_IMPLEMENTED);
               else
@@ -259,11 +259,11 @@ MiValue mi_eval_expression(MiSymbolTable* table, ASTExpression* expr)
               if (resultType != EXPR_LITERAL_STRING && right.as.number_value == 0.0)
                 return mi_runtime_value_create_error(MI_ERROR_DIVIDE_BY_ZERO);
 
-              if (resultType == EXPR_LITERAL_INT)
+              if (resultType == MI_VAL_INT)
                 return mi_runtime_value_create_int((int)(left.as.number_value / right.as.number_value));
-              else if (resultType == EXPR_LITERAL_FLOAT)
+              else if (resultType == MI_VAL_FLOAT)
                 return mi_runtime_value_create_float(left.as.number_value / right.as.number_value);
-              else if (resultType == EXPR_LITERAL_STRING)
+              else if (resultType == MI_VAL_STRING)
                 //TODO: String concatenation and conversion 
                 return mi_runtime_value_create_error(MI_ERROR_NOT_IMPLEMENTED);
               else
@@ -271,7 +271,7 @@ MiValue mi_eval_expression(MiSymbolTable* table, ASTExpression* expr)
             }
           case OP_MOD:
             {
-              if (resultType == EXPR_LITERAL_STRING)
+              if (resultType == MI_VAL_STRING)
                 return mi_runtime_value_create_error(MI_ERROR_UNSUPPORTED_OPERATION);
               else
                 return mi_runtime_value_create_int(((int)left.as.number_value % (int) right.as.number_value));
