@@ -243,10 +243,42 @@ static Token s_lexer_get_literal_string(Lexer *lexer)
   // Expecting a starting quote
   if (lexer->current_char == '"')
   {
+    bool handle_escape_char = false;
     s_lexer_advance(lexer);  // Move past the opening quote
     while (lexer->current_char != '"' && lexer->current_char != '\0')
     {
-      out.value[i++] = lexer->current_char;
+
+      char c = lexer->current_char;
+
+      // handle scape characters
+      if (handle_escape_char)
+      {
+        if (c == 'n')
+        {
+          c = '\n';
+          i--;
+        }
+        else if (c == 't')
+        {
+          c = '\t';
+          i--;
+        }
+        else if (c == '\\')
+        {
+          c = '\\';
+          i--;
+        }
+        else if (c == 'r')
+        {
+          c = '\r';
+          i--;
+        }
+        else
+          log_warning("Warning at line %d, column %d: Unknown escape character '%c'\n", lexer->line, lexer->column, c);
+      }
+      
+      handle_escape_char = c == '\\';
+      out.value[i++] = c;
       s_lexer_advance(lexer);
     }
     out.value[i] = '\0';  // Null terminate the string
