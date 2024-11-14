@@ -32,7 +32,7 @@ typedef enum TokenType_e
   TOKEN_CLOSE_PAREN,        // )
   TOKEN_OPEN_BRACE,         // {
   TOKEN_CLOSE_BRACE,        // }
-  TOKEN_OPEN_BRACKET,        // [
+  TOKEN_OPEN_BRACKET,       // [
   TOKEN_CLOSE_BRACKET,      // ]
   TOKEN_ASTERISK,           // *
   TOKEN_SLASH,              // /
@@ -63,6 +63,7 @@ typedef struct Token_t
 {
   TokenType type;
   char value[MI_PARSER_MAX_TOKEN_LENGTH];
+  char* value_ptr;
 } Token;
 
 
@@ -75,6 +76,7 @@ typedef struct Lexer_t
   int     line;         // Current line number
   int     column;       // Current column number
   bool    raw_mode;
+  bool    looking_ahead; // set when the lexer is looking ahead instead of actually getting the tokens.
 } Lexer;
 
 #define report_error(lexer, message) log_error("Syntax error at line %d, column %d: %s\n",\
@@ -166,6 +168,7 @@ static void s_lexer_advance(Lexer *lexer)
 static Token s_lexer_look_ahead(Lexer* lexer)
 {
   Lexer chekpoint = *lexer;
+  lexer->looking_ahead = true;
   Token t = s_lexer_get_next_token_(lexer, true);
   *lexer = chekpoint;
   return t;
@@ -237,48 +240,84 @@ static Token s_lexer_get_identifier(Lexer *lexer)
   return token;
 }
 
+void s_replace_escape_sequences(const char *input, size_t input_buffer_size, char *output,  size_t output_buffer_size)
+{
+    const char *src = input;  // Pointer to read from the input buffer
+    char *dest = output;      // Pointer to write to the output buffer
+    size_t i = 0;             // Counter for input buffer to ensure we stay within bounds
+    size_t dest_index = 0;    // Counter for output buffer to prevent overflow
 
-//TODO: Fix this! Very long string literals will cause a crash here.
+    while (i < input_buffer_size && dest_index < output_buffer_size - 1) {
+        if (*src == '\\' && (i + 1) < input_buffer_size) {
+            src++;  // Move to the character after backslash
+            i++;    // Increment input counter to account for the extra character
+            switch (*src) {
+                case 'n': *dest = '\n'; break;      // Newline
+                case 't': *dest = '\t'; break;      // Tab
+                case 'r': *dest = '\r'; break;      // Carriage return
+                case '\\': *dest = '\\'; break;     // Backslash
+                case '\"': *dest = '\"'; break;     // Double quote
+                case '\'': *dest = '\''; break;     // Single quote
+                default:
+                    // If unknown escape sequence, retain the literal `\` and character
+                    *dest++ = '\\';
+                    *dest = *src;
+                    dest_index++;  // Account for the extra character in the output
+                    break;
+            }
+        } else {
+            // Copy non-escape characters as-is
+            *dest = *src;
+        }
+        src++;
+        dest++;
+        i++;
+        dest_index++;
+    }
+    *dest = '\0'; // Null-terminate the output string
+}
+
 static Token s_lexer_get_literal_string(Lexer *lexer)
 {
   Token out;
+  out.type = TOKEN_ERROR;
+  out.value_ptr = NULL;
+  size_t str_length = 0;
 
   // Expecting a starting quote
   if (lexer->current_char == '"')
   {
-    int i = 0;
-    bool handle_escape_char = false;
-    s_lexer_advance(lexer);  // Move past the opening quote
-    while (lexer->current_char != '"' && lexer->current_char != '\0')
+    s_lexer_advance(lexer);
+    char* str_start = &lexer->buffer[lexer->position];
+    char* str_end = str_start;
+    bool after_backslash = false;
+
+    while ((lexer->current_char != '"' || (lexer->current_char == '"' && after_backslash)) && lexer->current_char != '\0')
     {
+      str_end++;
+      str_length++;
       char c = lexer->current_char;
-
-      // handle scape characters
-      if (handle_escape_char)
+      if (after_backslash)
       {
-        if (c == 'n')       { c = '\n'; i--; }
-        else if (c == 't')  { c = '\t'; i--; }
-        else if (c == '\\') { c = '\\'; i--; }
-        else if (c == 'r')  { c = '\r'; i--; }
-        else log_warning("Warning at line %d, column %d: Unknown escape character '%c'\n", lexer->line, lexer->column, c);
-
-        handle_escape_char = false;
+        if (c == 'n' || c == 't' || c == 'r' || c == '\\' || c == '\"' || c == '\'')
+          str_length--;
       }
-      else
-      {
-        handle_escape_char = c == '\\';
-      }
-
-      // output character
-      out.value[i++] = c;
+      after_backslash = c == '\\';
       s_lexer_advance(lexer);
     }
-    out.value[i] = '\0';  // Null terminate the string
-    if (lexer->current_char == '"')
+
+    if (lexer->current_char == '"' && after_backslash == false)
     {
-      s_lexer_advance(lexer);  // Move past the closing quote
-      out.type = TOKEN_LITERAL_STRING;    
-    } else
+      s_lexer_advance(lexer);
+      out.type = TOKEN_LITERAL_STRING;
+      if (lexer->looking_ahead == false)
+      {
+        size_t original_length = str_end - str_start;
+        out.value_ptr = (char*) malloc(str_length + 1);
+        s_replace_escape_sequences(str_start, original_length, out.value_ptr, str_length + 1);
+      }
+    }
+    else
     {
       out.type = TOKEN_ERROR;
     }
@@ -297,8 +336,8 @@ static bool s_lexer_skip_token(Lexer* lexer, TokenType expected_type)
   Token t = s_lexer_get_next_token(lexer);
   bool result = (t.type == expected_type);
   if (!result)
-     log_error("Sytax error at %d, %d: Expecting '%s' but '%s' found. \n",
-         lexer->line, lexer->column, token_get_name(expected_type), token_get_name(t.type));
+    log_error("Sytax error at %d, %d: Expecting '%s' but '%s' found. \n",
+        lexer->line, lexer->column, token_get_name(expected_type), token_get_name(t.type));
   return true;
 }
 
@@ -655,6 +694,30 @@ static ASTExpression* s_parse_function_call(Lexer* lexer)
 }
 
 
+ASTExpression* s_parse_lvalue(Lexer* lexer)
+{
+  Token identifier;
+  if (!s_lexer_require_token(lexer, TOKEN_IDENTIFIER, &identifier))
+    return NULL;
+
+  //TODO: check for '[' <indexexpr> ']' 
+  Token look_ahead_token1, look_ahead_token2;
+  s_lexer_look_ahead_2(lexer, &look_ahead_token1, &look_ahead_token2);
+  if (look_ahead_token1.type == TOKEN_OPEN_BRACKET)
+  {
+    s_lexer_skip_token(lexer, TOKEN_OPEN_BRACKET);
+    ASTExpression* index_expression = s_parse_expression(lexer);
+    if (index_expression == NULL)
+      return NULL;
+    if (s_lexer_skip_token(lexer, TOKEN_CLOSE_BRACKET) == false)
+      return NULL;
+
+    return mi_ast_expression_create_lvalue_array(look_ahead_token1.value, index_expression);
+  }
+
+  return mi_ast_expression_create_lvalue(identifier.value);
+}
+
 /*
  * <Factor> -> ( int_literal | float_literal | string_literal | bool_literal | <lvalue> | <FunctionCall> | "(" <LogicalExpression> ")" )
  */ 
@@ -666,7 +729,6 @@ static ASTExpression* s_parse_factor(Lexer* lexer)
   if (look_ahead_token1.type == TOKEN_OPEN_PAREN)
   {
     s_lexer_skip_token(lexer, TOKEN_OPEN_PAREN);
-    //ASTExpression* expression = s_parse_expression(lexer);
     ASTExpression* expression = s_parse_logical_expression(lexer);
 
     if (!s_lexer_skip_token(lexer, TOKEN_CLOSE_PAREN))
@@ -681,7 +743,7 @@ static ASTExpression* s_parse_factor(Lexer* lexer)
     Token literal_string;
     if (!s_lexer_require_token(lexer, TOKEN_LITERAL_STRING, &literal_string))
       return NULL;
-    return mi_ast_expression_create_literal_string(literal_string.value);
+    return mi_ast_expression_create_literal_string(literal_string.value_ptr);
   }
   else if (look_ahead_token1.type == TOKEN_LITERAL_INT)
   {
@@ -824,8 +886,8 @@ static ASTExpression* s_parse_num_expression(Lexer* lexer)
  */
 static ASTStatement* s_parse_assignment_statement(Lexer* lexer)
 {
-  Token identifier;
-  if (!s_lexer_require_token(lexer, TOKEN_IDENTIFIER, &identifier))
+  ASTExpression* lvalue = s_parse_lvalue(lexer);
+  if (lvalue == NULL)
     return NULL;
 
   if (!s_lexer_skip_token(lexer, TOKEN_OP_ASSIGN))
@@ -834,7 +896,7 @@ static ASTStatement* s_parse_assignment_statement(Lexer* lexer)
   ASTExpression* rhs = s_parse_logical_expression(lexer);
   if (rhs == NULL)
     return NULL;
-  return mi_ast_statement_create_assignment(identifier.value, rhs);
+  return mi_ast_statement_create_assignment(lvalue, rhs);
 }
 
 
@@ -1230,6 +1292,7 @@ void s_lexer_init(Lexer *lexer, const char *buffer)
   lexer->line = 1;
   lexer->column = 1;
   lexer->raw_mode = true;
+  lexer->looking_ahead = false;
 }
 
 //

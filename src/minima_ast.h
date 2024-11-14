@@ -36,6 +36,13 @@ typedef struct ASTFactor_t                ASTFactor;
 typedef struct ASTTerm_t                  ASTTerm;
 typedef struct ASTProgram_t               ASTProgram;
 typedef struct ASTStatementRaw_t          ASTStatementRaw;
+typedef struct ASTLvalue_t                ASTLvalue;
+
+typedef enum ASTLvalueType_e
+{
+  LVALUE_VARIABLE       = 0,
+  LVALUE_ARRAY_ACCESS   = 1,
+} ASTLvalueType;
 
 typedef enum ASTFactorOperator_e
 {
@@ -145,6 +152,13 @@ struct ASTFunctionCallExpression_t
   ASTExpression* args;
 };
 
+struct ASTLvalue_t
+{
+  ASTLvalueType   type;
+  Smallstr        identifier;
+  ASTExpression*  index_expression;
+};
+
 struct ASTExpression_t
 {
   ASTExpressionType type;                     // Expression type
@@ -155,18 +169,18 @@ struct ASTExpression_t
     ASTLogicalExpression      logical_expr;   // Logical expression
     ASTFunctionCallExpression func_call_expr; // Function call expression
     ASTFactor                 factor_expr;    // Factor expression
+    ASTLvalue                 lvalue;         // lvalue
     ASTTerm                   term_expr;      // Term expression
     double                    number_literal; // Numeric literal
     char*                     string_literal; // String literal
-    Smallstr                  identifier;     // Variable identifier
   } as;
   ASTExpression* next;
 };
 
 struct ASTAssignment_t
 {
-  Smallstr identifier;
-  ASTExpression* expression;
+  ASTExpression*  lvalue;
+  ASTExpression*  rvalue;
 };
 
 struct ASTIfStatement_t
@@ -197,9 +211,9 @@ struct ASTReturnStatement_t
 
 struct ASTFunctionDecl_t
 {
-  char*             identifier;
-  ASTStatement*     params;
-  ASTStatement*     body;
+  Smallstr        identifier;
+  ASTStatement*   params;
+  ASTStatement*   body;
 };
 
 struct ASTStatementList_t 
@@ -252,8 +266,9 @@ ASTExpression* mi_ast_expression_create_comparison(ASTExpression* left, ASTCompa
 ASTExpression* mi_ast_expression_create_literal_bool(bool value);
 ASTExpression* mi_ast_expression_create_literal_int(int value);
 ASTExpression* mi_ast_expression_create_literal_float(double value);
-ASTExpression* mi_ast_expression_create_literal_string(const char* value);
+ASTExpression* mi_ast_expression_create_literal_string(char* value);
 ASTExpression* mi_ast_expression_create_lvalue(const char* identifier);
+ASTExpression* mi_ast_expression_create_lvalue_array(const char* identifier, ASTExpression* index_expression);
 ASTExpression* mi_ast_expression_create_function_call(const char* identifier, ASTExpression* args);
 void mi_ast_expression_destroy(ASTExpression* expression);
 
@@ -262,7 +277,7 @@ void mi_ast_expression_destroy(ASTExpression* expression);
 //
 
 ASTStatement* mi_ast_statement_create_raw(char* start, size_t len);
-ASTStatement* mi_ast_statement_create_assignment(const char* identifier, ASTExpression* expression);
+ASTStatement* mi_ast_statement_create_assignment(ASTExpression* lvalue, ASTExpression* rvalue);
 ASTStatement* mi_ast_statement_create_if(ASTExpression* condition, ASTStatement* if_branch, ASTStatement* else_branch);
 ASTStatement* mi_ast_statement_create_for(ASTStatement* init, ASTExpression* condition, ASTStatement* update, ASTStatement* body);
 ASTStatement* mi_ast_statement_create_while(ASTExpression* condition, ASTStatement* body);

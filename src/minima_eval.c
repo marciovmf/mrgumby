@@ -300,7 +300,7 @@ MiValue mi_eval_expression(MiSymbolTable* table, ASTExpression* expr)
       } break;
     case EXPR_LVALUE:
       {
-        MiSymbol* lvalue = mi_symbol_table_get_variable(table, expr->as.identifier.str);
+        MiSymbol* lvalue = mi_symbol_table_get_variable(table, expr->as.lvalue.identifier.str);
         if (lvalue == NULL)
           return mi_runtime_value_create_error(MI_ERROR_UNINITIALIZED_VARIABLE_ACCESS);
         return lvalue->as.variable.value;
@@ -393,28 +393,29 @@ MiValue mi_eval_statement(MiSymbolTable* table, ASTStatement* stmt)
       }
     case AST_STATEMENT_ASSIGNMENT: 
       {
-        MiValue value = mi_eval_expression(table, stmt->as.assignment.expression);
+        MiValue value = mi_eval_expression(table, stmt->as.assignment.rvalue);
         if (value.error_code != MI_ERROR_SUCCESS)
           return value;
 
+        const char* identifier_name = stmt->as.assignment.lvalue->as.lvalue.identifier.str;
         if (value.type == MI_VAL_BOOL)
         {
-          mi_symbol_table_set_variable_bool(table, stmt->as.assignment.identifier.str, value.as.number_value);
+          mi_symbol_table_set_variable_bool(table, identifier_name, value.as.number_value);
           return mi_runtime_value_create_bool(value.as.number_value);
         }
         if (value.type == MI_VAL_INT)
         {
-          mi_symbol_table_set_variable_int(table, stmt->as.assignment.identifier.str, (int) value.as.number_value);
+          mi_symbol_table_set_variable_int(table, identifier_name, (int) value.as.number_value);
           return mi_runtime_value_create_int((int) value.as.number_value);
         }
         else if (value.type == MI_VAL_FLOAT)
         {
-          mi_symbol_table_set_variable_float(table, stmt->as.assignment.identifier.str, value.as.number_value);
+          mi_symbol_table_set_variable_float(table, identifier_name, value.as.number_value);
           return mi_runtime_value_create_float(value.as.number_value);
         }
         else if (value.type == MI_VAL_STRING)
         {
-          mi_symbol_table_set_variable_string(table, stmt->as.assignment.identifier.str, value.as.string_value);
+          mi_symbol_table_set_variable_string(table, identifier_name, value.as.string_value);
           return mi_runtime_value_create_string(value.as.string_value);
         }
         else
