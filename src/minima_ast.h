@@ -19,6 +19,7 @@ extern "C" {
 #endif
 
 #include "common.h"   // for Smallstr
+#include "minima_common.h"
 
 typedef struct ASTExpression_t            ASTExpression;
 typedef struct ASTStatement_t             ASTStatement;
@@ -37,6 +38,7 @@ typedef struct ASTTerm_t                  ASTTerm;
 typedef struct ASTProgram_t               ASTProgram;
 typedef struct ASTStatementRaw_t          ASTStatementRaw;
 typedef struct ASTLvalue_t                ASTLvalue;
+typedef struct ASTArrayInitExpression_t   ASTArrayInitExpression;
 
 typedef enum ASTLvalueType_e
 {
@@ -110,6 +112,7 @@ typedef enum ASTExpressionType_e
   EXPR_LITERAL_STRING = 9,      // String literal
   EXPR_LVALUE         = 10,     // Variable reference
   EXPR_FUNCTION_CALL  = 11,     // Function call
+  EXPR_ARRAY_INIT     = 12,     // Array initialization expression
 } ASTExpressionType;
 
 struct ASTUnaryExpression_t
@@ -159,6 +162,11 @@ struct ASTLvalue_t
   ASTExpression*  index_expression;
 };
 
+struct ASTArrayInitExpression_t
+{
+  ASTExpression* args;
+};
+
 struct ASTExpression_t
 {
   ASTExpressionType type;                     // Expression type
@@ -168,6 +176,7 @@ struct ASTExpression_t
     ASTComparisonExpression   comparison_expr;// Comparison expression
     ASTLogicalExpression      logical_expr;   // Logical expression
     ASTFunctionCallExpression func_call_expr; // Function call expression
+    ASTArrayInitExpression    array_init_expr;// Array initialization expresison
     ASTFactor                 factor_expr;    // Factor expression
     ASTLvalue                 lvalue;         // lvalue
     ASTTerm                   term_expr;      // Term expression
@@ -241,7 +250,7 @@ struct ASTStatement_t
     ASTFunctionDecl     function_decl;  // Function declaration
     ASTStatementRaw     raw;
     ASTStatement*       block_stmt;     // statement list
-    ASTExpression*      expression;     // Return expression , Function call
+    ASTExpression*      expression;     // Return expression , Function call, array initialization
   } as;
 
   ASTStatement* next;   // Next statement when this node is part of a statement list
@@ -270,6 +279,7 @@ ASTExpression* mi_ast_expression_create_literal_string(char* value);
 ASTExpression* mi_ast_expression_create_lvalue(const char* identifier);
 ASTExpression* mi_ast_expression_create_lvalue_array(const char* identifier, ASTExpression* index_expression);
 ASTExpression* mi_ast_expression_create_function_call(const char* identifier, ASTExpression* args);
+ASTExpression* mi_ast_expression_create_array_init(ASTExpression* args);
 void mi_ast_expression_destroy(ASTExpression* expression);
 
 //

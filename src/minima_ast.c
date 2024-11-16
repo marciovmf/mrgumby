@@ -35,7 +35,10 @@ void mi_ast_expression_destroy(ASTExpression* expression)
     free((void*) expression->as.term_expr.right);
     break;
   case EXPR_LITERAL_STRING:
-    free(expression->as.string_literal);
+    mi_ast_expression_destroy(expression->as.array_init_expr.args);
+    break;
+  case EXPR_ARRAY_INIT:
+    free(expression->as.array_init_expr.args);
     break;
   case EXPR_FUNCTION_CALL:
     mi_ast_expression_destroy(expression->as.func_call_expr.args);
@@ -154,8 +157,8 @@ ASTExpression* mi_ast_expression_create_term(ASTExpression* left, ASTTermOperato
 
 ASTExpression* mi_ast_expression_create_factor(ASTExpression* left, ASTFactorOperator op, ASTExpression* right)
 {
-  ASSERT(left != NULL && (left->type == EXPR_TERM || EXPRESSION_IS_LITERAL_OR_LVALUE(left)));
-  ASSERT(right != NULL && (right->type == EXPR_TERM || EXPRESSION_IS_LITERAL_OR_LVALUE(right)));
+  ASSERT(left != NULL && (left->type == EXPR_LOGICAL || left->type == EXPR_TERM || EXPRESSION_IS_LITERAL_OR_LVALUE(left)));
+  ASSERT(right != NULL && (right->type == EXPR_LOGICAL || right->type == EXPR_TERM || EXPRESSION_IS_LITERAL_OR_LVALUE(right)));
 
   ASTExpression* expr = MI_ASTCREATE_NODE(ASTExpression);
   expr->type = EXPR_FACTOR;
@@ -280,6 +283,15 @@ ASTExpression* mi_ast_expression_create_function_call(const char* identifier, AS
   return expr;
 }
 
+ASTExpression* mi_ast_expression_create_array_init(ASTExpression* args)
+{
+  ASTExpression* expr = MI_ASTCREATE_NODE(ASTExpression);
+  expr->type = EXPR_ARRAY_INIT;
+  expr->as.array_init_expr.args = args;
+  expr->next = NULL;
+  return expr;
+}
+
 
 
 //
@@ -296,7 +308,6 @@ ASTStatement* mi_ast_statement_create_raw(char* start, size_t len)
   stmt->next = NULL;
   return stmt;
 }
-
 
 ASTStatement* mi_ast_statement_create_assignment(ASTExpression* lvalue, ASTExpression* rvalue) 
 {
@@ -378,7 +389,6 @@ ASTStatement* mi_ast_statement_create_break(void)
   stmt->next = NULL;
   return stmt;
 }
-
 
 ASTStatement* mi_ast_statement_create_function_call(ASTExpression* func_call_expr)
 {

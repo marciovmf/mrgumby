@@ -1,5 +1,5 @@
 /**
- * @file eval.h
+ * @file minima_eval.h
  * @brief Provides structures and functions for interpreting and executing AST nodes.
  *
  * Defines the symbol table for variable management, error handling, and evaluation 
@@ -23,16 +23,14 @@
 extern "C" {
 #endif
 
-#include "minima_ast.h"
 #include "common.h"
+#include "minima_common.h"
+#include "minima_array.h"
+#include "minima_ast.h"
 
 //
 // Symbol Table
 //
-
-#ifndef MI_Mi_MAX_SYMBOLS
-#define MI_Mi_MAX_SYMBOLS       100
-#endif
 
 
 /**
@@ -41,55 +39,51 @@ extern "C" {
  */
 typedef enum
 {
-  MI_ERROR_SUCCESS                            = 0,       // No error.
+  MI_ERROR_SUCCESS                            = 0,   // No error.
   MI_ERROR_NOT_IMPLEMENTED                    = 1,   // Error for an unimplemented feature.
   MI_ERROR_DIVIDE_BY_ZERO                     = 2,   // Error for division by zero.
   MI_ERROR_UNSUPPORTED_OPERATION              = 3,   // Error for an unsupported operation.
   MI_ERROR_UNINITIALIZED_VARIABLE_ACCESS      = 4,   // Error for acessing an uninitialized variable
-
+  MI_ERROR_ARRAY_INDEX_TYPE                   = 5,   // Error for acessing an array with a non integer index type
+  MI_ERROR_ARRAY_INDEX_OUT_OF_BOUNDS          = 6,   // Error for indexing out array bounds
+  MI_ERROR_INCORRECT_ARGUMENT_COUNT           = 7,   // Error for passing incorrect number of arguments to a function
+  MI_ERROR_INCORRECT_ARGUMENT_TYPE            = 8,   // Error for passing wrong argument type to a function
   MI_ERROR_COUNT_
 } MiError;
 
-typedef enum MiValueType_e
-{
-  MI_VAL_INT,
-  MI_VAL_FLOAT,
-  MI_VAL_STRING,
-  MI_VAL_BOOL,
-  MI_VAL_VOID,
-  MI_VAL_ANY // used of function parameters
-} MiValueType;
-
 typedef enum MiSymbolType_e
 {
-  MI_SYMBOL_VARIABLE,
-  MI_SYMBOL_FUNCTION
+  MI_SYMBOL_VARIABLE  = 1,
+  MI_SYMBOL_FUNCTION  = 3,
 } MiSymbolType;
 
 typedef struct MiValue_t
 {
   MiError error_code;
-  MiValueType type;
+  MiType type;
   union
   {
     char* string_value;
     double number_value; // used for float, double and bool
+    MiArray* array_value;
   } as;
 } MiValue;
 
 typedef struct MiVariable_t
 {
-  char*     name;
+  const char*     name;
   MiValue   value;
   unsigned int scope;
 } MiVariable;
 
+typedef MiValue (*MiFunctionPtr)(int param_count, MiValue* parameters);
+
 typedef struct MiFunction_t
 {
-  char*       name;
-  int         param_count;
-  MiVariable* parameters;
-  MiValue (*function_ptr)(int param_count, MiValue* parameters); 
+  char*         name;
+  unsigned int  param_count;
+  MiVariable*   parameters;
+  MiFunctionPtr function_ptr;
 } MiFunction;
 
 typedef struct MiSymbol_t
@@ -105,10 +99,13 @@ typedef struct MiSymbol_t
 
 typedef struct SymbolTable_t
 {
-  MiSymbol entry[MI_Mi_MAX_SYMBOLS];    // Array of symbols (variables).
-  unsigned int count;                   // Number of variables currently stored.
-  unsigned int scope;                   // current scope level
+  MiSymbol* entry;    // Array of symbols (variables).
+  unsigned int scope; // current scope level
+  size_t count;       // Number of variables currently stored.
+  size_t capacity;
 } MiSymbolTable;
+
+
 
 
 //
@@ -132,6 +129,30 @@ void mi_symbol_table_init(MiSymbolTable* table);
 MiSymbol* mi_symbol_table_get_variable(MiSymbolTable* table, const char* identifier);
 
 /**
+ * @brief Creates a new function symbol in the symbol table.
+ *
+ * @param table Pointer to the symbol table where the function will be added.
+ * @param identifier Name of the function to be created.
+ * @param arg_count Number of parameters the function will accept.
+ * @return Pointer to the newly created Symbol.
+ */
+MiSymbol* mi_symbol_table_create_function(MiSymbolTable* table, MiFunctionPtr function_ptr, const char* identifier, int arg_count);
+
+/**
+ * @brief Sets the details of a parameter for a function symbol.
+ *
+ * @param symbol Pointer to the function Symbol to modify.
+ * @param index Index of the parameter to set (0-based).
+ * @param param_name Name of the parameter.
+ * @param param_type Type of the parameter (e.g., `MI_TYPE_ANY`).
+ * @param param_scope Scope of the parameter (e.g., local or global).
+ */
+void mi_symbol_table_function_set_param(MiSymbol* symbol, unsigned int index, const char* param_name, MiType param_type);
+
+
+void mi_symbol_table_destroy(MiSymbolTable* table);
+
+/**
  * @brief Evaluates the entire program by iterating through the AST.
  * 
  * @param table Pointer to the symbol table for variable lookup.
@@ -139,7 +160,6 @@ MiSymbol* mi_symbol_table_get_variable(MiSymbolTable* table, const char* identif
  * @return Exit code or runtime status of the program execution.
  */
 int mi_eval_program(MiSymbolTable* table, ASTProgram* program);
-
 
 /**
  * @brief Creates a boolean runtime value

@@ -6,7 +6,7 @@ list(APPEND SOURCES
   common.h common.c
   filesystem.h filesystem.c
   config.h config.c
-  minima.h minima.c minima_ast.h minima_ast.c minima_eval.c minima_parser.c
+  minima.h minima.c minima_ast.h minima_ast.c minima_eval.c minima_parser.c minima_common.h minima_array.h minima_array.c
   main.c
   version.rc)
 

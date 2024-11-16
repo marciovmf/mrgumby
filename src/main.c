@@ -1,67 +1,7 @@
 #include "common.h"
 #include "minima.h"
+#include "minima_array.h"
 #include "minima_eval.h"
-
-
-MiValue function_print(int param_count, MiValue* parameters)
-{
-  if (param_count == 1)
-  {
-    MiValue* value = &parameters[0];
-    if (value->type == MI_VAL_BOOL)
-    {
-      printf("%s",((int) value->as.number_value) ? "true" : "false");
-    }
-    else if (value->type == MI_VAL_INT)
-    {
-      printf("%d", (int) value->as.number_value);
-    }
-    else if (value->type == MI_VAL_FLOAT)
-    {
-      printf("%f", value->as.number_value);
-    }
-    else if (value->type == MI_VAL_STRING)
-    {
-      printf("%s", value->as.string_value);
-    }
-    else
-    {
-      log_info("Runtime value %llxn", value);
-    }
-  }
-
-  return mi_runtime_value_create_void();
-}
-
-MiValue function_print_line(int param_count, MiValue* parameters)
-{
-  if (param_count == 1)
-  {
-    MiValue* value = &parameters[0];
-    if (value->type == MI_VAL_BOOL)
-    {
-      printf("%s\n",((int) value->as.number_value) ? "true" : "false");
-    }
-    else if (value->type == MI_VAL_INT)
-    {
-      printf("%d\n", (int) value->as.number_value);
-    }
-    else if (value->type == MI_VAL_FLOAT)
-    {
-      printf("%f\n", value->as.number_value);
-    }
-    else if (value->type == MI_VAL_STRING)
-    {
-      printf("%s\n", value->as.string_value);
-    }
-    else
-    {
-      log_info("Runtime value %llxn", value);
-    }
-  }
-
-  return mi_runtime_value_create_void();
-}
 
 int test_language(int argc, char **argv)
 {
@@ -82,16 +22,6 @@ int test_language(int argc, char **argv)
 
   MiProgram* program = mi_program_create(buffer);
 
-  // Add a function into the symbol table
-  MiSymbol* s = &program->symbols.entry[program->symbols.count++];
-  smallstr(&s->identifier, "print");
-  s->type = MI_SYMBOL_FUNCTION;
-  s->as.function.param_count = 1;
-  s->as.function.function_ptr = function_print;
-  s->as.function.parameters = (MiVariable*) malloc(sizeof(MiVariable));
-  s->as.function.parameters[0].name = "msg";
-  s->as.function.parameters[0].value.type = MI_VAL_ANY;
-  s->as.function.parameters[0].scopeLevel = 0;
 
   int result = mi_program_run(program);
 
@@ -112,19 +42,19 @@ int test_language(int argc, char **argv)
     if (symbol->type != MI_SYMBOL_VARIABLE)
       continue;
 
-    if (symbol->as.variable.value.type == MI_VAL_BOOL)
+    if (symbol->as.variable.value.type == MI_TYPE_BOOL)
     {
       log_info("Variable %s:bool = %s\n", symbol->identifier.str, ((int) symbol->as.variable.value.as.number_value) ? "true" : "false");
     }
-    else if (symbol->as.variable.value.type == MI_VAL_INT)
+    else if (symbol->as.variable.value.type == MI_TYPE_INT)
     {
       log_info("Variable %s:int = %d\n", symbol->identifier.str, (int) symbol->as.variable.value.as.number_value);
     }
-    else if (symbol->as.variable.value.type == MI_VAL_FLOAT)
+    else if (symbol->as.variable.value.type == MI_TYPE_FLOAT)
     {
       log_info("Variable %s:float = %f\n", symbol->identifier.str, symbol->as.variable.value.as.number_value);
     }
-    else if (symbol->as.variable.value.type == MI_VAL_STRING)
+    else if (symbol->as.variable.value.type == MI_TYPE_STRING)
     {
       log_info("Variable %s:string = %s\n", symbol->identifier.str, symbol->as.variable.value.as.string_value);
     }
@@ -139,8 +69,30 @@ int test_language(int argc, char **argv)
   return result;
 }
 
+int test_array()
+{
+  MiArray* array = mi_array_create(4);
+
+  mi_array_add_int(array, 10);
+  mi_array_add_float(array, 3.14f);
+  mi_array_add_string(array, "Hello World");
+
+  MiArray* sub_array = mi_array_create(2);
+  mi_array_add_int(sub_array, 42);
+  mi_array_add_string(sub_array, "Nested Array");
+  mi_array_add_array(array, sub_array);
+
+  mi_array_print(array);
+
+  mi_array_destroy(array);
+  return 0;
+}
+
 int main(int argc, char **argv)
 {
+  //UNUSED(argc);
+  //UNUSED(argv);
+  //return test_array();
   return test_language(argc, argv);
 }
 

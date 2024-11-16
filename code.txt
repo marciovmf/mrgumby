@@ -1,0 +1,4 @@
+<?
+str = "Hello\nWorld\t!\nThis is a test:\\ \"quote\"";
+print(str);
+?>

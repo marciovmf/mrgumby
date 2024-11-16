@@ -12,6 +12,8 @@
 extern "C" {
 #endif
 
+
+#include "minima_ast.h"
 #include "minima_eval.h"
 
 typedef struct
@@ -20,9 +22,9 @@ typedef struct
   ASTProgram*   ast;
 } MiProgram;
 
-MiProgram* mi_program_create(const char* source); // Initializes a `MiProgram` from source code.
-int mi_program_run(MiProgram* program);           // Runs a MiProgram
-void mi_program_destroy(MiProgram* program);      // Destroys a MiProgram
+MiProgram*  mi_program_create(const char* source);  // Initializes a `MiProgram` from source code.
+int         mi_program_run(MiProgram* program);     // Runs a MiProgram
+void        mi_program_destroy(MiProgram* program); // Destroys a MiProgram
 
 #ifdef __cplusplus
 extern {
