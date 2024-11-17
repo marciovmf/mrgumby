@@ -5,31 +5,43 @@
 #include "minima_eval.h"
 #include "minima_parser.h"
 
+static void s_print_type(MiValue* value)
+{
+  if (value->type == MI_TYPE_BOOL)
+  {
+    printf("%s",((int) value->as.number_value) ? "true" : "false");
+  }
+  else if (value->type == MI_TYPE_INT)
+  {
+    printf("%d", (int) value->as.number_value);
+  }
+  else if (value->type == MI_TYPE_FLOAT)
+  {
+    printf("%f", value->as.number_value);
+  }
+  else if (value->type == MI_TYPE_STRING)
+  {
+    printf("%s", value->as.string_value);
+  }
+  else
+  {
+    log_info("Runtime value %llxn", value);
+  }
+}
 
 static MiValue s_function_print(int param_count, MiValue* args)
 {
   if (param_count == 1)
   {
     MiValue* value = &args[0];
-    if (value->type == MI_TYPE_BOOL)
+    if (value->type == MI_TYPE_ARRAY)
     {
-      printf("%s",((int) value->as.number_value) ? "true" : "false");
-    }
-    else if (value->type == MI_TYPE_INT)
-    {
-      printf("%d", (int) value->as.number_value);
-    }
-    else if (value->type == MI_TYPE_FLOAT)
-    {
-      printf("%f", value->as.number_value);
-    }
-    else if (value->type == MI_TYPE_STRING)
-    {
-      printf("%s", value->as.string_value);
+      MiArray* array = value->as.array_value;
+      mi_array_print(array);
     }
     else
     {
-      log_info("Runtime value %llxn", value);
+      s_print_type(value);
     }
   }
 

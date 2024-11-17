@@ -24,6 +24,7 @@ const char* mi_error_name(MiError error)
     [MI_ERROR_ARRAY_INDEX_OUT_OF_BOUNDS]          = "Array index out of bounds",
     [MI_ERROR_INCORRECT_ARGUMENT_COUNT]           = "Incorrect number of arguments for function",
     [MI_ERROR_INCORRECT_ARGUMENT_TYPE]            = "Incorrect argument type for function",
+    [MI_ERROR_INDEXING_NON_ARRAY_TYPE]            = "Indexing non array type",
   };
 
   if (error >= 0 && error < MI_ERROR_COUNT_)
@@ -425,34 +426,49 @@ MiValue mi_eval_expression(MiSymbolTable* table, ASTExpression* expr)
 
         if (expr->as.lvalue.type == LVALUE_ARRAY_ACCESS)
         {
+          ASTExpression* index_expression = expr->as.lvalue.index_expression;
           MiArray* array = lvalue->as.variable.value.as.array_value;
-          MiValue index = mi_eval_expression(table, expr->as.lvalue.index_expression);
+          MiArrayElement* element = NULL;
 
-          if (index.type != MI_TYPE_INT && index.type != MI_TYPE_BOOL)
+          while(index_expression)
           {
-            return mi_runtime_value_create_error(MI_ERROR_ARRAY_INDEX_TYPE);
+            MiValue index = mi_eval_expression(table, index_expression);
+
+            if (index.type != MI_TYPE_INT && index.type != MI_TYPE_BOOL)
+            {
+              return mi_runtime_value_create_error(MI_ERROR_ARRAY_INDEX_TYPE);
+            }
+
+            if (((int) index.as.number_value) >= (int) array->size)
+            {
+              return mi_runtime_value_create_error(MI_ERROR_ARRAY_INDEX_OUT_OF_BOUNDS);
+            }
+
+            int i = (int) index.as.number_value;
+            element = &array->elements[i];
+
+            index_expression = index_expression->next;
+
+            if (element->type == MI_TYPE_ARRAY)
+              array = element->data.arr;
+            else if (index_expression != NULL)
+            {
+              return mi_runtime_value_create_error(MI_ERROR_INDEXING_NON_ARRAY_TYPE);
+            }
           }
 
-          if ( ((int) index.as.number_value) >= (int) array->size)
-          {
-            return mi_runtime_value_create_error(MI_ERROR_ARRAY_INDEX_OUT_OF_BOUNDS);
-          }
-
-          int i = (int) index.as.number_value;
-          MiArrayElement* element = &array->elements[i];
-
-          if (element->type == MI_TYPE_INT)
-            return mi_runtime_value_create_int(element->data.i);
-          else if (element->type == MI_TYPE_FLOAT)
-            return  mi_runtime_value_create_float(element->data.f);
-          else if (element->type == MI_TYPE_BOOL)
-            return mi_runtime_value_create_bool((bool)element->data.i);
-          else if (element->type == MI_TYPE_ARRAY)
-            return mi_runtime_value_create_array(element->data.arr);
-          else if (element->type == MI_TYPE_STRING)
-            return mi_runtime_value_create_string(element->data.s);
-          else
-            ASSERT_BREAK();
+            if (element->type == MI_TYPE_INT)
+              return mi_runtime_value_create_int(element->data.i);
+            else if (element->type == MI_TYPE_FLOAT)
+              return  mi_runtime_value_create_float(element->data.f);
+            else if (element->type == MI_TYPE_BOOL)
+              return mi_runtime_value_create_bool((bool)element->data.i);
+            else if (element->type == MI_TYPE_STRING)
+              return mi_runtime_value_create_string(element->data.s);
+            else if (element->type == MI_TYPE_ARRAY)
+              return mi_runtime_value_create_array(element->data.arr);
+            else
+              ASSERT_BREAK();
         }
         return lvalue->as.variable.value;
         break;

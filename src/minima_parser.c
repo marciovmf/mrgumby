@@ -698,19 +698,35 @@ ASTExpression* s_parse_lvalue(Lexer* lexer)
   if (!s_lexer_require_token(lexer, TOKEN_IDENTIFIER, &identifier))
     return NULL;
 
-  Token look_ahead_token1, look_ahead_token2;
-  s_lexer_look_ahead_2(lexer, &look_ahead_token1, &look_ahead_token2);
-  if (look_ahead_token1.type == TOKEN_OPEN_BRACKET)
+  Token look_ahead_token;
+  look_ahead_token = s_lexer_look_ahead(lexer);
+
+  if(look_ahead_token.type == TOKEN_OPEN_BRACKET)
   {
     s_lexer_skip_token(lexer, TOKEN_OPEN_BRACKET);
-    ASTExpression* index_expression = s_parse_logical_expression(lexer);
-    if (index_expression == NULL)
-      return NULL;
-    if (s_lexer_skip_token(lexer, TOKEN_CLOSE_BRACKET) == false)
-      return NULL;
+    ASTExpression* first_index_expression = s_parse_logical_expression(lexer);
+    ASTExpression* index_expression = first_index_expression;
 
-    return mi_ast_expression_create_lvalue_array(identifier.value, index_expression);
+    while (true)
+    {
+      if (index_expression == NULL)
+        return NULL;
+
+      if (s_lexer_skip_token(lexer, TOKEN_CLOSE_BRACKET) == false)
+        return NULL;
+
+      look_ahead_token = s_lexer_look_ahead(lexer);
+
+      if (look_ahead_token.type != TOKEN_OPEN_BRACKET)
+        break;
+
+      s_lexer_skip_token(lexer, TOKEN_OPEN_BRACKET);
+      index_expression->next = s_parse_logical_expression(lexer);
+    }
+
+    return mi_ast_expression_create_lvalue_array(identifier.value, first_index_expression);
   }
+
 
   return mi_ast_expression_create_lvalue(identifier.value);
 }

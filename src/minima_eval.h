@@ -48,6 +48,7 @@ typedef enum
   MI_ERROR_ARRAY_INDEX_OUT_OF_BOUNDS          = 6,   // Error for indexing out array bounds
   MI_ERROR_INCORRECT_ARGUMENT_COUNT           = 7,   // Error for passing incorrect number of arguments to a function
   MI_ERROR_INCORRECT_ARGUMENT_TYPE            = 8,   // Error for passing wrong argument type to a function
+MI_ERROR_INDEXING_NON_ARRAY_TYPE              = 9,   // Error for indexing a non array type
   MI_ERROR_COUNT_
 } MiError;
 

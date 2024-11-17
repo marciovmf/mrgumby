@@ -103,28 +103,30 @@ void mi_array_destroy(MiArray* array)
 
 void mi_array_print(MiArray* array)
 {
+  printf("[ ");
   for (size_t i = 0; i < array->size; i++)
   {
+    char* comma =  (i < array->size - 1) ? ", " : "";
     switch (array->elements[i].type)
     {
       case MI_TYPE_BOOL:
-        printf("INT: %d\n", array->elements[i].data.i);
+        printf("%s%s", array->elements[i].data.b ? "true" : "false", comma);
         break;
       case MI_TYPE_INT:
-        printf("INT: %d\n", array->elements[i].data.i);
+        printf("%d%s", array->elements[i].data.i, comma);
         break;
       case MI_TYPE_FLOAT:
-        printf("FLOAT: %.2f\n", array->elements[i].data.f);
+        printf("%.4f%s", array->elements[i].data.f, comma);
         break;
       case MI_TYPE_STRING:
-        printf("STRING: %s\n", array->elements[i].data.s);
+        printf("'%s'%s", array->elements[i].data.s, comma);
         break;
       case MI_TYPE_ARRAY:
-        printf("SUB-ARRAY:\n");
-        mi_array_print(array->elements[i].data.arr); // Print sub-array recursively
+        mi_array_print(array->elements[i].data.arr);
         break;
       default:
-        printf("UNKNOWN TYPE: %d\n", array->elements[i].type);
+        printf("<UNKNOWN>: %d%s", array->elements[i].type, comma);
     }
   }
+  printf(" ]");
 }
