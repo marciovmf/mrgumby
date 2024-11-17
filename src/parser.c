@@ -8,8 +8,6 @@
  * @author marciofmv
  */
 
-//TODO: Arrays, Function declaration, Logical AND and OR operators
-
 #include "parser.h"
 #include "common.h"
 #include "ast.h"

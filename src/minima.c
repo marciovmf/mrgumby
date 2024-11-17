@@ -5,6 +5,11 @@
 #include "minima_eval.h"
 #include "minima_parser.h"
 
+//TODO: Arrays and strings must be deleted somehow. Garbage collection ?
+//TODO: improve variable scope
+//TODO: For loops
+//TODO: Break statement
+
 static void s_print_type(MiValue* value)
 {
   if (value->type == MI_TYPE_BOOL)
