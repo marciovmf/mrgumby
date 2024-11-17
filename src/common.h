@@ -119,7 +119,7 @@ extern "C" {
 
   /* Utility macros */
 
-  #define UNUSED(x) (void)(x) // mark a function argument as unused
+#define UNUSED(x) (void)(x) // mark a function argument as unused
 
   /* Common types */
 
@@ -227,20 +227,20 @@ extern "C" {
 
   /* File reading */
 
-/**
- * Reads the entire contents of a specified file into a dynamically allocated memory buffer.
- *
- * @param file_name   A pointer to a null-terminated string containing the name of the file to be read.
- * @param out_buffer  A double pointer to a character buffer. This will be allocated within the function 
- *               and will point to the buffer containing the file contents upon success.
- * @param out_file_size A pointer to a size_t that will be updated with the size of the file in bytes upon successful completion of the function.
- * @param null_terminate A boolean indicating if the buffer should be null terminated. If true an extra byte will be allocated for the null terminator.
- * 
- * @return 0 on success, or -1 if an error occurs (e.g., if the file cannot be opened, memory 
- *         allocation fails, or the file cannot be read completely).
- * 
- * @Note: The memory allocated for the buffer must be freed by the caller using the free().
- */
+  /**
+   * Reads the entire contents of a specified file into a dynamically allocated memory buffer.
+   *
+   * @param file_name   A pointer to a null-terminated string containing the name of the file to be read.
+   * @param out_buffer  A double pointer to a character buffer. This will be allocated within the function 
+   *               and will point to the buffer containing the file contents upon success.
+   * @param out_file_size A pointer to a size_t that will be updated with the size of the file in bytes upon successful completion of the function.
+   * @param null_terminate A boolean indicating if the buffer should be null terminated. If true an extra byte will be allocated for the null terminator.
+   * 
+   * @return 0 on success, or -1 if an error occurs (e.g., if the file cannot be opened, memory 
+   *         allocation fails, or the file cannot be read completely).
+   * 
+   * @Note: The memory allocated for the buffer must be freed by the caller using the free().
+   */
   int read_entire_file_to_memory(const char *file_name, char **out_buffer, size_t *out_file_size, bool null_terminate);
 
 
