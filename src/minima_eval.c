@@ -585,8 +585,7 @@ MiValue mi_eval_statement(MiSymbolTable* table, ASTStatement* stmt)
                 mi_array_add_string(array, e.as.string_value);
                 break;
               case MI_TYPE_ARRAY:
-                //TODO: Implement this
-                ASSERT_BREAK();
+                mi_array_add_array(array, e.as.array_value);
                 break;
               default:
                 ASSERT_BREAK();

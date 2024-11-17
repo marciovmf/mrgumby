@@ -123,6 +123,7 @@ void mi_array_print(MiArray* array)
         break;
       case MI_TYPE_ARRAY:
         mi_array_print(array->elements[i].data.arr);
+        printf("%s",comma);
         break;
       default:
         printf("<UNKNOWN>: %d%s", array->elements[i].type, comma);
