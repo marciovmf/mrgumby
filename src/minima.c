@@ -9,23 +9,24 @@
 //TODO: improve variable scope
 //TODO: Function declaration
 
-static void s_print_type(MiValue* value)
+
+static void s_print_type(MiValue* value, char* separator)
 {
   if (value->type == MI_TYPE_BOOL)
   {
-    printf("%s",((int) value->as.number_value) ? "true" : "false");
+    printf("%s%s",((int) value->as.number_value) ? "true" : "false", separator);
   }
   else if (value->type == MI_TYPE_INT)
   {
-    printf("%d", (int) value->as.number_value);
+    printf("%d%s", (int) value->as.number_value, separator);
   }
   else if (value->type == MI_TYPE_FLOAT)
   {
-    printf("%f", value->as.number_value);
+    printf("%f%s", value->as.number_value, separator);
   }
   else if (value->type == MI_TYPE_STRING)
   {
-    printf("%s", value->as.string_value);
+    printf("%s%s", value->as.string_value, separator);
   }
   else
   {
@@ -35,17 +36,21 @@ static void s_print_type(MiValue* value)
 
 static MiValue s_function_print(int param_count, MiValue* args)
 {
-  if (param_count == 1)
+  for (int i = 0; i < param_count; i++)
   {
-    MiValue* value = &args[0];
+    char* sep = i == param_count - 1 ? "" : " ";
+
+    MiValue* value = &args[i];
     if (value->type == MI_TYPE_ARRAY)
     {
       MiArray* array = value->as.array_value;
       mi_array_print(array);
+      printf("%s", sep);
     }
     else
     {
-      s_print_type(value);
+      s_print_type(value, sep);
+
     }
   }
 
@@ -108,14 +113,14 @@ MiProgram* mi_program_create(const char* source)
   MiSymbol* function = NULL;
 
   // Print function
-  function = mi_symbol_table_create_function(&program->symbols, s_function_print, "print", 1);
+  function = mi_symbol_table_create_function(&program->symbols, s_function_print, "print", 1, true);
   mi_symbol_table_function_set_param(function, 0, "arg0", MI_TYPE_ANY);
 
   // Array functions
-  function = mi_symbol_table_create_function(&program->symbols, s_function_array_size, "array_size", 1);
+  function = mi_symbol_table_create_function(&program->symbols, s_function_array_size, "array_size", 1, false);
   mi_symbol_table_function_set_param(function, 0, "arg0", MI_TYPE_ARRAY);
 
-  function = mi_symbol_table_create_function(&program->symbols, s_function_array_append, "array_append", 2);
+  function = mi_symbol_table_create_function(&program->symbols, s_function_array_append, "array_append", 2, false);
   mi_symbol_table_function_set_param(function, 0, "array", MI_TYPE_ARRAY);
   mi_symbol_table_function_set_param(function, 0, "element", MI_TYPE_ANY);
 

@@ -131,26 +131,25 @@ inline MiSymbol* s_symbol_table_get_variable(MiSymbolTable* table, const char* i
   return NULL;
 }
 
-MiSymbol* mi_symbol_table_create_function(MiSymbolTable* table, MiFunctionPtr function_ptr, const char* identifier, int arg_count)
+MiSymbol* mi_symbol_table_create_function(MiSymbolTable* table, MiFunctionPtr function_ptr, const char* identifier, int arg_count, bool variadic)
 {
-    s_symbol_table_grow(table);
+  s_symbol_table_grow(table);
+  MiSymbol* symbol = &table->entry[table->count++];
+  smallstr(&symbol->identifier, identifier);
+  symbol->type = MI_SYMBOL_FUNCTION;
+  symbol->as.function.param_count = arg_count;
+  symbol->as.function.function_ptr = function_ptr;
+  symbol->as.function.parameters = malloc(arg_count * sizeof(MiVariable));
+  symbol->as.function.variadic = variadic;
 
-    MiSymbol* symbol = &table->entry[table->count++];
-    smallstr(&symbol->identifier, identifier);
-    symbol->type = MI_SYMBOL_FUNCTION;
-    symbol->as.function.param_count = arg_count;
-    symbol->as.function.function_ptr = function_ptr;
-    symbol->as.function.parameters = malloc(arg_count * sizeof(MiVariable));
-
-    // Initialize parameters with default values
-    for (int i = 0; i < arg_count; ++i)
-    {
-      symbol->as.function.parameters[i].name = NULL;
-      symbol->as.function.parameters[i].value.type = MI_TYPE_ANY;
-      symbol->as.function.parameters[i].scope = 0;
-    }
-
-    return symbol;
+  // Initialize parameters with default values
+  for (int i = 0; i < arg_count; ++i)
+  {
+    symbol->as.function.parameters[i].name = NULL;
+    symbol->as.function.parameters[i].value.type = MI_TYPE_ANY;
+    symbol->as.function.parameters[i].scope = 0;
+  }
+  return symbol;
 }
 
 void mi_symbol_table_function_set_param(MiSymbol* symbol, unsigned int index, const char* param_name, MiType param_type)
@@ -303,7 +302,7 @@ MiValue mi_eval_expression(MiSymbolTable* table, ASTExpression* expr)
         while(arg != NULL)
         {
 
-          if (argc >= symbol->as.function.param_count)
+          if (argc >= symbol->as.function.param_count && symbol->as.function.variadic == false)
           {
             return mi_runtime_value_create_error(MI_ERROR_INCORRECT_ARGUMENT_COUNT);
           }
@@ -462,18 +461,18 @@ MiValue mi_eval_expression(MiSymbolTable* table, ASTExpression* expr)
             }
           }
 
-            if (element->type == MI_TYPE_INT)
-              return mi_runtime_value_create_int(element->data.i);
-            else if (element->type == MI_TYPE_FLOAT)
-              return  mi_runtime_value_create_float(element->data.f);
-            else if (element->type == MI_TYPE_BOOL)
-              return mi_runtime_value_create_bool((bool)element->data.i);
-            else if (element->type == MI_TYPE_STRING)
-              return mi_runtime_value_create_string(element->data.s);
-            else if (element->type == MI_TYPE_ARRAY)
-              return mi_runtime_value_create_array(element->data.arr);
-            else
-              ASSERT_BREAK();
+          if (element->type == MI_TYPE_INT)
+            return mi_runtime_value_create_int(element->data.i);
+          else if (element->type == MI_TYPE_FLOAT)
+            return  mi_runtime_value_create_float(element->data.f);
+          else if (element->type == MI_TYPE_BOOL)
+            return mi_runtime_value_create_bool((bool)element->data.i);
+          else if (element->type == MI_TYPE_STRING)
+            return mi_runtime_value_create_string(element->data.s);
+          else if (element->type == MI_TYPE_ARRAY)
+            return mi_runtime_value_create_array(element->data.arr);
+          else
+            ASSERT_BREAK();
         }
         return lvalue->as.variable.value;
         break;
@@ -799,8 +798,8 @@ MiValue mi_eval_statement(MiSymbolTable* table, ASTStatement* stmt)
         break;
       }
     case AST_STATEMENT_BREAK: 
-        return mi_ast_expression_create_break();
-        break;
+      return mi_ast_expression_create_break();
+      break;
     default:
       break;
   }

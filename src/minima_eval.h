@@ -81,6 +81,7 @@ typedef MiValue (*MiFunctionPtr)(int param_count, MiValue* parameters);
 
 typedef struct MiFunction_t
 {
+  bool          variadic;
   char*         name;
   unsigned int  param_count;
   MiVariable*   parameters;
@@ -137,7 +138,7 @@ MiSymbol* mi_symbol_table_get_variable(MiSymbolTable* table, const char* identif
  * @param arg_count Number of parameters the function will accept.
  * @return Pointer to the newly created Symbol.
  */
-MiSymbol* mi_symbol_table_create_function(MiSymbolTable* table, MiFunctionPtr function_ptr, const char* identifier, int arg_count);
+MiSymbol* mi_symbol_table_create_function(MiSymbolTable* table, MiFunctionPtr function_ptr, const char* identifier, int arg_count, bool variadic);
 
 /**
  * @brief Sets the details of a parameter for a function symbol.
