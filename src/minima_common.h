@@ -14,6 +14,7 @@ typedef enum MiType_e
   MI_TYPE_ARRAY,
   MI_TYPE_BOOL,
   MI_TYPE_VOID,
+  MI_TYPE_INTERNAL_BREAK,
   MI_TYPE_ANY // used of function parameters
 } MiType;
 

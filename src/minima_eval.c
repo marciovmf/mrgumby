@@ -34,6 +34,11 @@ const char* mi_error_name(MiError error)
   return "Unknown error";
 }
 
+MiValue mi_ast_expression_create_break()
+{
+  return (MiValue){ .type = MI_TYPE_INTERNAL_BREAK, .error_code = MI_ERROR_SUCCESS };
+}
+
 MiValue mi_runtime_value_create_array(MiArray* value)
 {
   return (MiValue){ .type = MI_TYPE_ARRAY, .as.array_value = value, .error_code = MI_ERROR_SUCCESS };
@@ -692,27 +697,70 @@ MiValue mi_eval_statement(MiSymbolTable* table, ASTStatement* stmt)
       }
     case AST_STATEMENT_IF: 
       {
+        MiValue result = mi_runtime_value_create_void();
         MiValue condition = condition = mi_eval_expression(table, stmt->as.if_stmt.condition);
         ASSERT(condition.type == MI_TYPE_FLOAT || condition.type == MI_TYPE_INT || condition.type == MI_TYPE_BOOL);
 
         if (condition.as.number_value != 0) 
         {
           s_mi_symbol_table_scope_begin(table);
-          mi_eval_statement_list(table, stmt->as.if_stmt.if_branch);
+          result = mi_eval_statement_list(table, stmt->as.if_stmt.if_branch);
           s_mi_symbol_table_scope_end(table);
         }
         else if (stmt->as.if_stmt.else_branch != NULL)
         {
-          table->scope++;
-          mi_eval_statement_list(table, stmt->as.if_stmt.else_branch);
-          table->scope--;
+          s_mi_symbol_table_scope_begin(table);
+          result = mi_eval_statement_list(table, stmt->as.if_stmt.else_branch);
+          s_mi_symbol_table_scope_end(table);
         }
-        return mi_runtime_value_create_void();
+
+        return result;
         break;
       }
     case AST_STATEMENT_FOR: 
       {
-        //TODO: implement for loops
+        MiValue result = mi_runtime_value_create_void();
+        s_mi_symbol_table_scope_begin(table);
+        // Initialization
+        MiValue init = mi_eval_statement(table, stmt->as.for_stmt.init);
+        if (init.error_code != MI_ERROR_SUCCESS)
+          return init;
+
+        while(true)
+        {
+          // Condition
+          MiValue condition = condition = mi_eval_expression(table, stmt->as.for_stmt.condition);
+          ASSERT(condition.type == MI_TYPE_FLOAT || condition.type == MI_TYPE_INT || condition.type == MI_TYPE_BOOL);
+
+          if (condition.error_code != MI_ERROR_SUCCESS)
+          {
+            result.error_code = condition.error_code;
+            break;
+          }
+
+          if (condition.as.number_value == 0)
+            break;
+
+          MiValue v = mi_eval_statement_list(table, stmt->as.for_stmt.body);
+          if (v.error_code != MI_ERROR_SUCCESS)
+          {
+            result.error_code = v.error_code;
+            break;
+          }
+
+          // Update
+          MiValue update = condition = mi_eval_statement(table, stmt->as.for_stmt.update);
+          ASSERT(update.type == MI_TYPE_FLOAT || update.type == MI_TYPE_INT || update.type == MI_TYPE_BOOL);
+          if (update.error_code != MI_ERROR_SUCCESS)
+          {
+            result.error_code = update.error_code;
+            break;
+          }
+        }
+        s_mi_symbol_table_scope_end(table);
+
+        return result;
+
         break;
       }
     case AST_STATEMENT_WHILE: 
@@ -730,12 +778,14 @@ MiValue mi_eval_statement(MiSymbolTable* table, ASTStatement* stmt)
           // Eval block
           ASTStatement* statement = stmt->as.while_stmt.body;
           s_mi_symbol_table_scope_begin(table);
-          while(statement != NULL)
-          {
-            mi_eval_statement(table, statement);
-            statement = statement->next;
-          }
+          MiValue v = mi_eval_statement_list(table, statement);
           s_mi_symbol_table_scope_end(table);
+
+          if (v.error_code != MI_ERROR_SUCCESS)
+            return v;
+
+          if (v.type == MI_TYPE_INTERNAL_BREAK)
+            break;
         }
 
         break;
@@ -749,10 +799,8 @@ MiValue mi_eval_statement(MiSymbolTable* table, ASTStatement* stmt)
         break;
       }
     case AST_STATEMENT_BREAK: 
-      {
-        //TODO: implement break statement
+        return mi_ast_expression_create_break();
         break;
-      }
     default:
       break;
   }
@@ -765,7 +813,14 @@ MiValue mi_eval_statement_list(MiSymbolTable* table, ASTStatement* first_stmt)
   ASTStatement* statement = first_stmt;
   while(statement != NULL)
   {
-    mi_eval_statement(table, statement);
+    MiValue v = mi_eval_statement(table, statement);
+
+    if (v.error_code != MI_ERROR_SUCCESS)
+      return v;
+
+    if (v.type == MI_TYPE_INTERNAL_BREAK)
+      return v;
+
     statement = statement->next;
   }
 

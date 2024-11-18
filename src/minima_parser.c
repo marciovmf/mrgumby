@@ -8,8 +8,6 @@
  * @author marciofmv
  */
 
-//TODO: Arrays, Function declaration
-
 #include "common.h"
 #include "minima_ast.h"
 #include "minima_parser.h"
@@ -48,6 +46,7 @@ typedef enum TokenType_e
   TOKEN_FOR,                // for keyword
   TOKEN_WHILE,              // while keyword
   TOKEN_RETURN,             // return keyword
+  TOKEN_BREAK,              // break keyword
   TOKEN_INCLUDE,            // include keyword
   TOKEN_IDENTIFIER,         // <variable names>
   TOKEN_LITERAL_INT,        // [0-9]+
@@ -73,9 +72,10 @@ typedef struct Lexer_t
   char    current_char; // Current character
   char    next_char;    // Next character
   size_t  position;     // Current position in the buffer
-  int     line;         // Current line number
-  int     column;       // Current column number
-  bool    raw_mode;
+  i32     line;         // Current line number
+  i32     column;       // Current column number
+  u32     in_loop;      // nested loop levels
+  bool    raw_mode;     //
   bool    looking_ahead; // set when the lexer is looking ahead instead of actually getting the tokens.
 } Lexer;
 
@@ -120,6 +120,7 @@ const char* token_get_name(TokenType token)
     [TOKEN_ELSE]            = "else statement",
     [TOKEN_FOR]             = "for statement",
     [TOKEN_RETURN]          = "return satement",
+    [TOKEN_BREAK]           = "breake satement",
     [TOKEN_INCLUDE]         = "Include directive",
     [TOKEN_IDENTIFIER]      = "Identifier",
     [TOKEN_LITERAL_INT]     = "Integer literal",
@@ -232,6 +233,7 @@ static Token s_lexer_get_identifier(Lexer *lexer)
   else if (strcmp(token.value, "for") == 0) token.type = TOKEN_FOR;
   else if (strcmp(token.value, "include") == 0) token.type = TOKEN_INCLUDE;
   else if (strcmp(token.value, "return") == 0) token.type = TOKEN_RETURN;
+  else if (strcmp(token.value, "break") == 0) token.type = TOKEN_BREAK;
   else if (strcmp(token.value, "while") == 0) token.type = TOKEN_WHILE;
   else if (strcmp(token.value, "true") == 0) token.type = TOKEN_LITERAL_BOOL;
   else if (strcmp(token.value, "false") == 0) token.type = TOKEN_LITERAL_BOOL;
@@ -983,13 +985,16 @@ static ASTStatement* s_parse_while_statement(Lexer* lexer)
   }
 
   // then_block
+  lexer->in_loop++;
   ASTStatement* then_block = s_parse_statement(lexer);
   if (then_block == NULL)
   {
+    lexer->in_loop--;
     mi_ast_expression_destroy(condition);
     return NULL;
   }
 
+  lexer->in_loop--;
   return mi_ast_statement_create_while(condition, then_block);
 }
 
@@ -1029,15 +1034,18 @@ static ASTStatement* s_parse_for_statement(Lexer* lexer)
   }
 
   // then_block
+  lexer->in_loop++;
   ASTStatement* then_block = s_parse_statement(lexer);
   if (then_block == NULL)
   {
+    lexer->in_loop--;
     mi_ast_statement_destroy(init);
     mi_ast_expression_destroy(condition);
     mi_ast_statement_destroy(update);
     return NULL;
   }
 
+  lexer->in_loop--;
   return mi_ast_statement_create_for(init, condition, update, then_block);
 }
 
@@ -1268,6 +1276,20 @@ static ASTStatement* s_parse_statement(Lexer *lexer)
         }
         break;
       }
+    case TOKEN_BREAK:
+      {
+        if (lexer->in_loop == 0)
+        {
+          log_error("Sytax error at %d, %d: Break statement not in loop \n", lexer->line, lexer->column);
+          return NULL;
+        }
+
+        s_lexer_skip_token(lexer, TOKEN_BREAK);
+        if(s_lexer_skip_token(lexer, TOKEN_SEMICOLON))
+          return mi_ast_statement_create_break();
+
+        break;
+      }
     case TOKEN_RETURN:
       {
         ASTStatement* statement = s_parse_return_statement(lexer);
@@ -1318,14 +1340,15 @@ static ASTStatement* s_parse_statement_list(Lexer* lexer)
 
 void s_lexer_init(Lexer *lexer, const char *buffer)
 {
-  lexer->buffer = (char *)buffer;
-  lexer->position = 0;
-  lexer->current_char = buffer[lexer->position]; // Start with the first character
-  lexer->next_char = lexer->current_char != 0 ? lexer->buffer[1] : 0;
-  lexer->line = 1;
-  lexer->column = 1;
-  lexer->raw_mode = true;
-  lexer->looking_ahead = false;
+  lexer->buffer         = (char *)buffer;
+  lexer->current_char   = buffer[0]; // Start with the first character
+  lexer->next_char      = lexer->current_char != 0 ? lexer->buffer[1] : 0;
+  lexer->position       = 0;
+  lexer->line           = 1;
+  lexer->column         = 1;
+  lexer->in_loop        = 0;
+  lexer->raw_mode       = true;
+  lexer->looking_ahead  = false;
 }
 
 //

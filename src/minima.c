@@ -7,8 +7,7 @@
 
 //TODO: Arrays and strings must be deleted somehow. Garbage collection ?
 //TODO: improve variable scope
-//TODO: For loops
-//TODO: Break statement
+//TODO: Function declaration
 
 static void s_print_type(MiValue* value)
 {
