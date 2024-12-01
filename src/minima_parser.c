@@ -15,8 +15,8 @@
 typedef enum TokenType_e
 {
   TOKEN_ERROR,              // Represents a tokenizer error
-  TOKEN_OPEN_CODE_BLOCK,    // <?
-  TOKEN_CLOSE_CODE_BLOCK,   // ?>
+  //TOKEN_OPEN_CODE_BLOCK,    // <?
+  //TOKEN_CLOSE_CODE_BLOCK,   // ?>
   TOKEN_LOGICAL_AND,        // &&
   TOKEN_LOGICAL_OR,         // ||
   TOKEN_OP_ASSIGN,          // =
@@ -68,16 +68,19 @@ typedef struct Token_t
 
 typedef struct Lexer_t
 {
-  char    *buffer;      // Buffer containing the file contents
-  char    current_char; // Current character
-  char    next_char;    // Next character
-  size_t  position;     // Current position in the buffer
-  i32     line;         // Current line number
-  i32     column;       // Current column number
-  u32     in_loop;      // nested loop levels
-  bool    raw_mode;     //
-  bool    looking_ahead; // set when the lexer is looking ahead instead of actually getting the tokens.
+  char    *buffer;        // Buffer containing the file contents
+  char    current_char;   // Current character
+  char    next_char;      // Next character
+  size_t  position;       // Current position in the buffer
+  i32     line;           // Current line number
+  i32     column;         // Current column number
+  u32     in_loop;        // nested loop levels
+
+  bool    in_code_block;
+
+  bool    looking_ahead;  // set when the lexer is looking ahead instead of actually getting the tokens.
 } Lexer;
+
 
 #define report_error(lexer, message) log_error("Syntax error at line %d, column %d: %s\n",\
     lexer->line, lexer->column, message);
@@ -88,10 +91,9 @@ typedef struct Lexer_t
 
 const char* token_get_name(TokenType token)
 {
-  static const char *tokenNames[TOKEN_COUNT_] = {
+  static const char *tokenNames[TOKEN_COUNT_] =
+  {
     [TOKEN_ERROR]           = "Invalid",
-    [TOKEN_OPEN_CODE_BLOCK] = "Code block open",
-    [TOKEN_CLOSE_CODE_BLOCK]= "Code block close",
     [TOKEN_LOGICAL_AND]     = "Logical AND operator",
     [TOKEN_LOGICAL_OR]      = "Logical OR operator",
     [TOKEN_OP_ASSIGN]       = "Assignment operator",
@@ -180,12 +182,6 @@ static void s_lexer_look_ahead_2(Lexer* lexer, Token* token1, Token* token2)
 {
   Lexer chekpoint = *lexer;
   *token1 = s_lexer_get_next_token_(lexer, true);
-
-  // we don't want to start parsing stuff not meant to be parsed.
-  // if somethig is put past a close block token, consider it is in raw mode
-  if (token1->type == TOKEN_CLOSE_CODE_BLOCK)
-    lexer->raw_mode = true;
-
   *token2 = s_lexer_get_next_token_(lexer, true);
   *lexer = chekpoint;
 }
@@ -198,7 +194,6 @@ static void s_lexer_skip_until_next_line(Lexer *lexer)
     s_lexer_advance(lexer);
   }
 }
-
 
 static void s_lexer_skip_whitespace(Lexer *lexer)
 {
@@ -213,7 +208,6 @@ static void s_lexer_skip_whitespace(Lexer *lexer)
     }
   }
 }
-
 
 static Token s_lexer_get_identifier(Lexer *lexer)
 {
@@ -244,39 +238,39 @@ static Token s_lexer_get_identifier(Lexer *lexer)
 
 void s_replace_escape_sequences(const char *input, size_t input_buffer_size, char *output,  size_t output_buffer_size)
 {
-    const char *src = input;  // Pointer to read from the input buffer
-    char *dest = output;      // Pointer to write to the output buffer
-    size_t i = 0;             // Counter for input buffer to ensure we stay within bounds
-    size_t dest_index = 0;    // Counter for output buffer to prevent overflow
+  const char *src = input;  // Pointer to read from the input buffer
+  char *dest = output;      // Pointer to write to the output buffer
+  size_t i = 0;             // Counter for input buffer to ensure we stay within bounds
+  size_t dest_index = 0;    // Counter for output buffer to prevent overflow
 
-    while (i < input_buffer_size && dest_index < output_buffer_size - 1) {
-        if (*src == '\\' && (i + 1) < input_buffer_size) {
-            src++;  // Move to the character after backslash
-            i++;    // Increment input counter to account for the extra character
-            switch (*src) {
-                case 'n': *dest = '\n'; break;      // Newline
-                case 't': *dest = '\t'; break;      // Tab
-                case 'r': *dest = '\r'; break;      // Carriage return
-                case '\\': *dest = '\\'; break;     // Backslash
-                case '\"': *dest = '\"'; break;     // Double quote
-                case '\'': *dest = '\''; break;     // Single quote
-                default:
-                    // If unknown escape sequence, retain the literal `\` and character
-                    *dest++ = '\\';
-                    *dest = *src;
-                    dest_index++;  // Account for the extra character in the output
-                    break;
-            }
-        } else {
-            // Copy non-escape characters as-is
-            *dest = *src;
-        }
-        src++;
-        dest++;
-        i++;
-        dest_index++;
+  while (i < input_buffer_size && dest_index < output_buffer_size - 1) {
+    if (*src == '\\' && (i + 1) < input_buffer_size) {
+      src++;  // Move to the character after backslash
+      i++;    // Increment input counter to account for the extra character
+      switch (*src) {
+        case 'n': *dest = '\n'; break;      // Newline
+        case 't': *dest = '\t'; break;      // Tab
+        case 'r': *dest = '\r'; break;      // Carriage return
+        case '\\': *dest = '\\'; break;     // Backslash
+        case '\"': *dest = '\"'; break;     // Double quote
+        case '\'': *dest = '\''; break;     // Single quote
+        default:
+                   // If unknown escape sequence, retain the literal `\` and character
+                   *dest++ = '\\';
+                   *dest = *src;
+                   dest_index++;  // Account for the extra character in the output
+                   break;
+      }
+    } else {
+      // Copy non-escape characters as-is
+      *dest = *src;
     }
-    *dest = '\0'; // Null-terminate the output string
+    src++;
+    dest++;
+    i++;
+    dest_index++;
+  }
+  *dest = '\0'; // Null-terminate the output string
 }
 
 static Token s_lexer_get_literal_string(Lexer *lexer)
@@ -381,26 +375,26 @@ static Token s_lexer_get_next_token_(Lexer *lexer, bool suppress_errors)
       token.type = TOKEN_LITERAL_FLOAT;
     return token;
   }
-  else if (lexer->current_char == '<' && lexer->next_char == '?')
-  {
-    token.type = TOKEN_OPEN_CODE_BLOCK;
-    token.value[0] = lexer->current_char;
-    token.value[1] = lexer->next_char;
-    token.value[2] = '\0';
-    s_lexer_advance(lexer);
-    s_lexer_advance(lexer);
-    return token;
-  }
-  else if (lexer->current_char == '?' && lexer->next_char == '>')
-  {
-    token.type = TOKEN_CLOSE_CODE_BLOCK;
-    token.value[0] = lexer->current_char;
-    token.value[1] = lexer->next_char;
-    token.value[2] = '\0';
-    s_lexer_advance(lexer);
-    s_lexer_advance(lexer);
-    return token;
-  }
+  //else if (lexer->current_char == '<' && lexer->next_char == '?')
+  //{
+  //  token.type = TOKEN_OPEN_CODE_BLOCK;
+  //  token.value[0] = lexer->current_char;
+  //  token.value[1] = lexer->next_char;
+  //  token.value[2] = '\0';
+  //  s_lexer_advance(lexer);
+  //  s_lexer_advance(lexer);
+  //  return token;
+  //}
+  //else if (lexer->current_char == '?' && lexer->next_char == '>')
+  //{
+  //  token.type = TOKEN_CLOSE_CODE_BLOCK;
+  //  token.value[0] = lexer->current_char;
+  //  token.value[1] = lexer->next_char;
+  //  token.value[2] = '\0';
+  //  s_lexer_advance(lexer);
+  //  s_lexer_advance(lexer);
+  //  return token;
+  //}
   else if (lexer->current_char == '&' && lexer->next_char == '&')
   {
     token.type = TOKEN_LOGICAL_AND;
@@ -1187,26 +1181,87 @@ static ASTExpression* s_parse_expression(Lexer* lexer)
  */
 ASTStatement* s_parse_raw(Lexer* lexer)
 {
-  char* start = &lexer->buffer[lexer->position];
-  size_t len = 0;
-  while(true)
+  // The start of a program is always considered the start of a raw block
+  if (lexer->in_code_block)
   {
-    if (lexer->raw_mode == false  || lexer->current_char == 0)
-      break;
-
-    // Ignore new lines immediately after closing code blocks
-    if (*start == '\r' || *start == '\n' || *start == '\t')
+    while (isspace(lexer->current_char))
     {
-      start++;
-      s_lexer_advance(lexer);
-      continue;
+      s_lexer_advance(lexer);  // Skip whitespace only
     }
 
-    // A raw block ends at EOF or <%
     if (lexer->current_char == '<' && lexer->next_char == '?')
     {
+      log_error("Unexpected start delimiter '<?' at %d, %d", lexer->line, lexer->column);
+      return NULL;
+    }
+
+    if (lexer->current_char == '?' && lexer->next_char == '>')
+    {
+      lexer->in_code_block = false;
+
+      s_lexer_advance(lexer);
+      s_lexer_advance(lexer);
+
+      // ignore first new line after closing the code block
+      if (lexer->current_char == '\r' && lexer->next_char == '\n')
+      {
+        s_lexer_advance(lexer);
+        s_lexer_advance(lexer);
+      }
+      else if (lexer->current_char == '\n')
+        s_lexer_advance(lexer);
+
+    }
+    else if (lexer->current_char != 0)
+      return s_parse_statement(lexer);
+  }
+
+  char* start = &lexer->buffer[lexer->position];
+  size_t len = 0;
+
+  while(true)
+  {
+    if (lexer->current_char == 0)
+    {
+      if (lexer->in_code_block)
+      {
+        log_error("Expecting end delimiter '?>' at %d, %d but reached end of stream.", lexer->line, lexer->column);
+        return NULL;
+      }
       break;
     }
+
+    // Handle code end delimiters
+    if (lexer->current_char == '?' && lexer->next_char == '>')
+    {
+      if (lexer->in_code_block == false)
+      {
+        log_error("Unexpected end delimiter '?>' at %d, %d", lexer->line, lexer->column);
+        return NULL;
+      }
+
+      s_lexer_advance(lexer);
+      s_lexer_advance(lexer);
+      lexer->in_code_block = false;
+      break;
+    }
+
+    // Handle code start delimiter
+    if (lexer->current_char == '<' && lexer->next_char == '?')
+    {
+      if (lexer->in_code_block)
+      {
+        log_error("Unexpected start delimiter '<?' at %d, %d", lexer->line, lexer->column);
+        return NULL;
+      }
+
+      s_lexer_advance(lexer);
+      s_lexer_advance(lexer);
+      lexer->in_code_block = true;
+      break;
+    }
+
+
     len++;
     s_lexer_advance(lexer);
   }
@@ -1230,18 +1285,18 @@ static ASTStatement* s_parse_statement(Lexer *lexer)
 
   switch (look_ahead_token1.type)
   {
-    case TOKEN_OPEN_CODE_BLOCK:
-      {
-        lexer->raw_mode = false;
-        s_lexer_skip_token(lexer, TOKEN_OPEN_CODE_BLOCK);
-        return s_parse_raw(lexer);
-      }
-    case TOKEN_CLOSE_CODE_BLOCK:
-      {
-        lexer->raw_mode = true;
-        s_lexer_skip_token(lexer, TOKEN_CLOSE_CODE_BLOCK);
-        return s_parse_raw(lexer);
-      }
+    //case TOKEN_OPEN_CODE_BLOCK:
+    //  {
+    //    lexer->raw_mode = false;
+    //    s_lexer_skip_token(lexer, TOKEN_OPEN_CODE_BLOCK);
+    //    return s_parse_raw(lexer);
+    //  }
+    //case TOKEN_CLOSE_CODE_BLOCK:
+    //  {
+    //    lexer->raw_mode = true;
+    //    s_lexer_skip_token(lexer, TOKEN_CLOSE_CODE_BLOCK);
+    //    return s_parse_raw(lexer);
+    //  }
     case TOKEN_OPEN_BRACE:
       {
         if (s_lexer_skip_token(lexer, TOKEN_OPEN_BRACE) == false)
@@ -1330,7 +1385,7 @@ static ASTStatement* s_parse_statement_list(Lexer* lexer)
 
   while(statement)
   {
-    statement->next = s_parse_statement(lexer);
+    statement->next = s_parse_raw(lexer);
     statement = statement->next;
   }
 
@@ -1340,15 +1395,15 @@ static ASTStatement* s_parse_statement_list(Lexer* lexer)
 
 void s_lexer_init(Lexer *lexer, const char *buffer)
 {
-  lexer->buffer         = (char *)buffer;
-  lexer->current_char   = buffer[0]; // Start with the first character
-  lexer->next_char      = lexer->current_char != 0 ? lexer->buffer[1] : 0;
-  lexer->position       = 0;
-  lexer->line           = 1;
-  lexer->column         = 1;
-  lexer->in_loop        = 0;
-  lexer->raw_mode       = true;
-  lexer->looking_ahead  = false;
+  lexer->buffer           = (char *)buffer;
+  lexer->current_char     = buffer[0]; // Start with the first character
+  lexer->next_char        = lexer->current_char != 0 ? lexer->buffer[1] : 0;
+  lexer->position         = 0;
+  lexer->line             = 1;
+  lexer->column           = 1;
+  lexer->in_loop          = 0;
+  lexer->looking_ahead    = false;
+  lexer->in_code_block    = false;
 }
 
 //

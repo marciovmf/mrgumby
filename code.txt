@@ -1,4 +1,22 @@
+
+This is data!
+
 <?
 str = "Hello\nWorld\t!\nThis is a test:\\ \"quote\"";
 print(str);
 ?>
+
+foo
+
+<?
+print("Hello, Sailor!\n");
+x = 10;
+while (x > 0)
+{
+?> Dynamic line #<? print(x, "\n");
+  x = x - 1;
+}
+
+?>
+
+more data
