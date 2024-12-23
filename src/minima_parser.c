@@ -15,8 +15,6 @@
 typedef enum TokenType_e
 {
   TOKEN_ERROR,              // Represents a tokenizer error
-  //TOKEN_OPEN_CODE_BLOCK,    // <?
-  //TOKEN_CLOSE_CODE_BLOCK,   // ?>
   TOKEN_LOGICAL_AND,        // &&
   TOKEN_LOGICAL_OR,         // ||
   TOKEN_OP_ASSIGN,          // =
@@ -56,6 +54,7 @@ typedef enum TokenType_e
   TOKEN_EOF,                // End of file/stream
   TOKEN_COUNT_
 } TokenType;
+
 
 #define MI_PARSER_MAX_TOKEN_LENGTH 100
 typedef struct Token_t
@@ -187,13 +186,18 @@ static void s_lexer_look_ahead_2(Lexer* lexer, Token* token1, Token* token2)
 }
 
 
-static void s_lexer_skip_until_next_line(Lexer *lexer)
+static void s_lexer_skip_until_next_line_or_end_of_code_block(Lexer *lexer)
 {
   while (lexer->current_char != '\n' && lexer->current_char != '\0')
   {
+    // A comment line will end if a code block ends
+    if (lexer->current_char == '?' && lexer->next_char == '>')
+      break;
+
     s_lexer_advance(lexer);
   }
 }
+
 
 static void s_lexer_skip_whitespace(Lexer *lexer)
 {
@@ -201,7 +205,7 @@ static void s_lexer_skip_whitespace(Lexer *lexer)
   {
     if (lexer->current_char == '#')
     {
-      s_lexer_skip_until_next_line(lexer);  // Skip comment line
+      s_lexer_skip_until_next_line_or_end_of_code_block(lexer);  // Skip comment line
     } else
     {
       s_lexer_advance(lexer);  // Skip whitespace
@@ -375,26 +379,6 @@ static Token s_lexer_get_next_token_(Lexer *lexer, bool suppress_errors)
       token.type = TOKEN_LITERAL_FLOAT;
     return token;
   }
-  //else if (lexer->current_char == '<' && lexer->next_char == '?')
-  //{
-  //  token.type = TOKEN_OPEN_CODE_BLOCK;
-  //  token.value[0] = lexer->current_char;
-  //  token.value[1] = lexer->next_char;
-  //  token.value[2] = '\0';
-  //  s_lexer_advance(lexer);
-  //  s_lexer_advance(lexer);
-  //  return token;
-  //}
-  //else if (lexer->current_char == '?' && lexer->next_char == '>')
-  //{
-  //  token.type = TOKEN_CLOSE_CODE_BLOCK;
-  //  token.value[0] = lexer->current_char;
-  //  token.value[1] = lexer->next_char;
-  //  token.value[2] = '\0';
-  //  s_lexer_advance(lexer);
-  //  s_lexer_advance(lexer);
-  //  return token;
-  //}
   else if (lexer->current_char == '&' && lexer->next_char == '&')
   {
     token.type = TOKEN_LOGICAL_AND;
@@ -1258,6 +1242,7 @@ ASTStatement* s_parse_raw(Lexer* lexer)
       s_lexer_advance(lexer);
       s_lexer_advance(lexer);
       lexer->in_code_block = true;
+      s_lexer_skip_whitespace(lexer);
       break;
     }
 
@@ -1268,6 +1253,7 @@ ASTStatement* s_parse_raw(Lexer* lexer)
 
   if (len > 0)
   {
+
     return mi_ast_statement_create_raw(start, len);
   }
 
@@ -1285,18 +1271,6 @@ static ASTStatement* s_parse_statement(Lexer *lexer)
 
   switch (look_ahead_token1.type)
   {
-    //case TOKEN_OPEN_CODE_BLOCK:
-    //  {
-    //    lexer->raw_mode = false;
-    //    s_lexer_skip_token(lexer, TOKEN_OPEN_CODE_BLOCK);
-    //    return s_parse_raw(lexer);
-    //  }
-    //case TOKEN_CLOSE_CODE_BLOCK:
-    //  {
-    //    lexer->raw_mode = true;
-    //    s_lexer_skip_token(lexer, TOKEN_CLOSE_CODE_BLOCK);
-    //    return s_parse_raw(lexer);
-    //  }
     case TOKEN_OPEN_BRACE:
       {
         if (s_lexer_skip_token(lexer, TOKEN_OPEN_BRACE) == false)
@@ -1410,7 +1384,6 @@ void s_lexer_init(Lexer *lexer, const char *buffer)
 // Public functions
 //
 
-
 /*
  * <Program> -> ( <StatementList> )*
  */
@@ -1418,8 +1391,16 @@ ASTProgram* mi_parse_program(const char* buffer)
 {
   Lexer lexer;
   s_lexer_init(&lexer, buffer);
-
   ASTStatement* body = s_parse_statement_list(&lexer);
+  ASTStatement* last = body;
+  while(s_lexer_look_ahead(&lexer).type != TOKEN_EOF)
+  {
+    while(last->next)
+    {
+      last = last->next;
+    }
+    last->next = s_parse_statement_list(&lexer);
+  }
   return mi_ast_program_create(body);
 }
 
