@@ -3,6 +3,8 @@
 #include "minima_ast.h"
 #include "minima_common.h"
 #include "minima_eval.h"
+#include <string.h>
+#include <stdlib.h>
 
 
 //

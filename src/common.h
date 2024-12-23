@@ -99,12 +99,8 @@ extern "C" {
 
   /* Assertion macros */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <ctype.h>
-#include <stdbool.h>
 #include <stdarg.h>
+#include <stdio.h>
 
 #define ASSERT_BREAK() (*(volatile int*)0 = 0)
 #define ASSERT(CONDITION) do{\
@@ -242,7 +238,6 @@ extern "C" {
    * @Note: The memory allocated for the buffer must be freed by the caller using the free().
    */
   int read_entire_file_to_memory(const char *file_name, char **out_buffer, size_t *out_file_size, bool null_terminate);
-
 
 
   /*

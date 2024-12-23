@@ -11,6 +11,9 @@
 #include "common.h"
 #include "minima_ast.h"
 #include "minima_parser.h"
+#include <stdlib.h>
+#include <string.h>
+#include <ctype.h>
 
 typedef enum TokenType_e
 {

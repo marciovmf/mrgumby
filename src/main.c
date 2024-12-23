@@ -1,5 +1,7 @@
 #include "common.h"
 #include "minima.h"
+#include <stdio.h>
+#include <stdlib.h>
 
 int test_language(int argc, char **argv)
 {

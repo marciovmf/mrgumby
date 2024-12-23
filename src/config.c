@@ -4,6 +4,16 @@
 #include <stdlib.h>
 #include <string.h>
 
+void s_trim(char* str)
+{
+  char* p = str;
+  p = &str[strlen(p)-1];
+  while(p > str && p[0] == ' ')
+  {
+    p[0] = 0;
+    p--;
+  }
+}
 
 Config *cfg_create_config()
 {
@@ -90,6 +100,8 @@ Config *cfg_parse_file(const char *filename)
       if (newline)
         *newline = '\0';
 
+      s_trim(key);
+      s_trim(value);
       cfg_add_entry(cfg, key, value);
     }
   }

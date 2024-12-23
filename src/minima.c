@@ -5,6 +5,10 @@
 #include "minima_eval.h"
 #include "minima_parser.h"
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
 //TODO: Arrays and strings must be deleted somehow. Garbage collection ?
 //TODO: improve variable scope
 //TODO: Function declaration

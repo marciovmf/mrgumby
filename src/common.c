@@ -3,6 +3,8 @@
 #include <stdarg.h>
 #include <string.h>
 #include <stdlib.h>
+#include <stdio.h>
+
 
 /* Logging functions */
 
@@ -147,3 +149,4 @@ char* strdup_safe(const char* str)
   if (copy) strcpy(copy, str);
   return copy;
 }
+
