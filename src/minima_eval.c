@@ -279,7 +279,7 @@ void mi_symbol_table_set_variable_array(MiSymbolTable* table, const char* identi
 
 
 //
-// Evaluation fucntions
+// Evaluation functions
 //
 
 MiValue mi_eval_expression(MiSymbolTable* table, ASTExpression* expr) 
@@ -851,3 +851,4 @@ int mi_eval_program(MiSymbolTable* table, ASTProgram* program)
 
   return 0;
 }
+

@@ -96,6 +96,18 @@ void smallstr_clear(Smallstr* smallString)
   memset(smallString->str, 0, SMALLSTR_MAX_LENGTH * sizeof(char));
 }
 
+
+u32 str_hash(const char* str)
+{
+  uint32_t hash = 2166136261u; // FNV offset basis
+  while (*str)
+  {
+    hash ^= (uint32_t) *str++;
+    hash *= 16777619u; // FNV prime
+  }
+  return hash;
+}
+
 /* File reading */
 
 

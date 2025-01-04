@@ -58,15 +58,15 @@ typedef enum TokenType_e
   TOKEN_COUNT_
 } TokenType;
 
-
+#define MI_PARSER_MAX_INCLUDES 64
 #define MI_PARSER_MAX_TOKEN_LENGTH 100
+
 typedef struct Token_t
 {
   TokenType type;
   char value[MI_PARSER_MAX_TOKEN_LENGTH];
   char* value_ptr;
 } Token;
-
 
 typedef struct Lexer_t
 {
@@ -79,17 +79,68 @@ typedef struct Lexer_t
   u32     in_loop;        // nested loop levels
 
   bool    in_code_block;
-
   bool    looking_ahead;  // set when the lexer is looking ahead instead of actually getting the tokens.
 } Lexer;
 
+typedef struct MiInclude_t MiInclude;
+struct MiInclude_t
+{
+  u32 hash;
+  const char* name;
+  const char* buffer;
+  MiInclude* next;
+};
 
-#define report_error(lexer, message) log_error("Syntax error at line %d, column %d: %s\n",\
-    lexer->line, lexer->column, message);
+typedef struct MiIncludeTable_t
+{
+  MiInclude entry[MI_PARSER_MAX_INCLUDES];
+  u32 count;
+} MiIncludeTable;
 
+//
+// Include file handling
+//
 
-#define report_error_unexpected_token(lexer, token_type) log_error("Sytax error at %d, %d: Unexpected '%s' token \n",\
-    lexer->line, lexer->column, token_get_name(token_type))
+MiIncludeTable* s_include_table_get()
+{
+  static MiIncludeTable s_include_table = {0};
+  return &s_include_table;
+}
+
+MiInclude* s_include_file_get(const char* path)
+{
+  u32 hash = str_hash(path);
+  MiIncludeTable* include_table = s_include_table_get();  
+  ASSERT(include_table->count + 1 < MI_PARSER_MAX_INCLUDES);
+
+  // Return the include file if it is already loaded.
+  if (include_table->count > 0)
+  {
+    for(u32 i = 0; i < include_table->count; i++)
+    {
+      if (hash == include_table->entry[i].hash
+          && (strcmp(path, include_table->entry[i].name) == 0))
+      {
+        return &include_table->entry[i];
+      }
+    }
+  }
+
+  // Load the include file
+  char *buffer;
+  size_t fileSize;
+  if (read_entire_file_to_memory(path, &buffer, &fileSize, true) != 0)
+  {
+    return NULL; 
+  }
+
+  MiInclude* include_file = NULL;
+  include_file = &include_table->entry[include_table->count++];
+  include_file->hash = hash;
+  include_file->name = path;
+  include_file->buffer = buffer;
+  return include_file;
+}
 
 const char* token_get_name(TokenType token)
 {
@@ -140,6 +191,16 @@ const char* token_get_name(TokenType token)
   return tokenNames[TOKEN_ERROR];
 }
 
+//
+// Lexer/Tokenizer
+//
+
+#define report_error(lexer, message) log_error("Syntax error at line %d, column %d: %s\n",\
+    lexer->line, lexer->column, message);
+
+
+#define report_error_unexpected_token(lexer, token_type) log_error("Sytax error at %d, %d: Unexpected '%s' token \n",\
+    lexer->line, lexer->column, token_get_name(token_type))
 
 #define s_lexer_get_next_token(lexer) s_lexer_get_next_token_(lexer, false)
 static Token s_lexer_get_next_token_(Lexer *lexer, bool suppress_errors);
@@ -149,6 +210,20 @@ static ASTStatement* s_parse_statement(Lexer *lexer);
 static ASTStatement* s_parse_statement_list(Lexer* lexer);
 static ASTExpression* s_parse_logical_expression(Lexer* lexer);
 static ASTExpression* s_parse_logical_expression_and(Lexer* lexer);
+
+
+void s_lexer_init(Lexer *lexer, const char *buffer)
+{
+  lexer->buffer           = (char *)buffer;
+  lexer->current_char     = buffer[0]; // Start with the first character
+  lexer->next_char        = lexer->current_char != 0 ? lexer->buffer[1] : 0;
+  lexer->position         = 0;
+  lexer->line             = 1;
+  lexer->column           = 1;
+  lexer->in_loop          = 0;
+  lexer->looking_ahead    = false;
+  lexer->in_code_block    = false;
+}
 
 
 static void s_lexer_advance(Lexer *lexer)
@@ -216,6 +291,7 @@ static void s_lexer_skip_whitespace(Lexer *lexer)
   }
 }
 
+
 static Token s_lexer_get_identifier(Lexer *lexer)
 {
 
@@ -242,6 +318,7 @@ static Token s_lexer_get_identifier(Lexer *lexer)
 
   return token;
 }
+
 
 void s_replace_escape_sequences(const char *input, size_t input_buffer_size, char *output,  size_t output_buffer_size)
 {
@@ -279,6 +356,7 @@ void s_replace_escape_sequences(const char *input, size_t input_buffer_size, cha
   }
   *dest = '\0'; // Null-terminate the output string
 }
+
 
 static Token s_lexer_get_literal_string(Lexer *lexer)
 {
@@ -1339,6 +1417,29 @@ static ASTStatement* s_parse_statement(Lexer *lexer)
         return s_parse_while_statement(lexer);
         break;
       }
+    case TOKEN_INCLUDE:
+      {
+        Token token;
+        if (s_lexer_skip_token(lexer, TOKEN_INCLUDE)
+            && s_lexer_require_token(lexer, TOKEN_LITERAL_STRING, &token)
+            && s_lexer_skip_token(lexer, TOKEN_SEMICOLON))
+        {
+          MiInclude* include_file = s_include_file_get(token.value_ptr);
+          if (include_file == NULL)
+          {
+            log_error("Failed to include file '%s'", token.value_ptr);
+            return NULL;
+          }
+
+          Lexer l;
+          s_lexer_init(&l, include_file->buffer);
+          l.in_loop = lexer->in_loop;
+          ASTStatement* statement_list = s_parse_statement_list(&l);
+          lexer->in_loop = l.in_loop;
+          return statement_list;
+        }
+        break;
+      }
     case TOKEN_IF:
       return s_parse_if_statement(lexer);
     default:
@@ -1362,26 +1463,18 @@ static ASTStatement* s_parse_statement_list(Lexer* lexer)
 
   while(statement)
   {
-    statement->next = s_parse_raw(lexer);
+    statement->next = s_parse_raw(lexer); 
     statement = statement->next;
+
+    // if we got a statement_list instead of a statement we need to find the
+    // last statement of the list
+    while (statement && statement->next)
+      statement = statement->next;
   }
 
   return first_statement;
 };
 
-
-void s_lexer_init(Lexer *lexer, const char *buffer)
-{
-  lexer->buffer           = (char *)buffer;
-  lexer->current_char     = buffer[0]; // Start with the first character
-  lexer->next_char        = lexer->current_char != 0 ? lexer->buffer[1] : 0;
-  lexer->position         = 0;
-  lexer->line             = 1;
-  lexer->column           = 1;
-  lexer->in_loop          = 0;
-  lexer->looking_ahead    = false;
-  lexer->in_code_block    = false;
-}
 
 //
 // Public functions

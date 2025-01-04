@@ -108,8 +108,6 @@ typedef struct SymbolTable_t
 } MiSymbolTable;
 
 
-
-
 //
 // Public functions
 //

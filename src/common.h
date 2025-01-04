@@ -220,6 +220,13 @@ extern "C" {
   void smallstr_clear(Smallstr* smallString);
 
 
+  /**
+   * @brief Calculates a 32bit hash of a C string
+   * 
+   * @param the hashed value.
+   */
+  u32 str_hash(const char* str);
+
 
   /* File reading */
 
