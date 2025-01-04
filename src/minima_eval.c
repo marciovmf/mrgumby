@@ -168,8 +168,7 @@ MiSymbol* mi_symbol_table_get_variable(MiSymbolTable* table, const char* identif
 {
   MiSymbol* variable = s_symbol_table_get_variable(table, identifier);
   if (variable == NULL)
-    log_error("Requested uninitialized variable '%s'", identifier);
-
+    log_error("Requested uninitialized variable '%s'\n", identifier);
   return variable;
 }
 
@@ -183,7 +182,7 @@ MiSymbol* mi_symbol_table_get_function(MiSymbolTable* table, const char* identif
     }
   }
 
-  log_warning("Requested unknown function '%s'", identifier);
+  log_warning("Requested unknown function '%s'\n", identifier);
   return 0;
 }
 
@@ -748,6 +747,9 @@ MiValue mi_eval_statement(MiSymbolTable* table, ASTStatement* stmt)
             result.error_code = v.error_code;
             break;
           }
+          
+          if (v.type == MI_TYPE_INTERNAL_BREAK)
+            break;
 
           // Update
           MiValue update = condition = mi_eval_statement(table, stmt->as.for_stmt.update);
