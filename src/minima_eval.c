@@ -11,7 +11,7 @@
 // Runtime expression value
 //
 
-MiValue mi_eval_statement_list(MiSymbolTable* table, ASTStatement* first_stmt);
+MiValue mi_eval_statement_list(MiSymbolTable* table, ASTStatement* first_stmt, FILE* out);
 
 const char* mi_error_name(MiError error)
 {
@@ -281,7 +281,7 @@ void mi_symbol_table_set_variable_array(MiSymbolTable* table, const char* identi
 // Evaluation functions
 //
 
-MiValue mi_eval_expression(MiSymbolTable* table, ASTExpression* expr) 
+MiValue mi_eval_expression(MiSymbolTable* table, ASTExpression* expr, FILE* out) 
 {
   switch (expr->type) 
   {
@@ -308,7 +308,7 @@ MiValue mi_eval_expression(MiSymbolTable* table, ASTExpression* expr)
             return mi_runtime_value_create_error(MI_ERROR_INCORRECT_ARGUMENT_COUNT);
           }
 
-          MiValue v = mi_eval_expression(table, arg);
+          MiValue v = mi_eval_expression(table, arg, out);
           if (v.error_code != MI_ERROR_SUCCESS)
             return v;
 
@@ -320,13 +320,13 @@ MiValue mi_eval_expression(MiSymbolTable* table, ASTExpression* expr)
           arg = arg->next;
         }
 
-        return symbol->as.function.function_ptr(argc, (MiValue*) args);
+        return symbol->as.function.function_ptr(argc, (MiValue*) args, out);
         break;
       }
     case EXPR_FACTOR:
       {
-        MiValue left = mi_eval_expression(table, expr->as.term_expr.left);
-        MiValue right = mi_eval_expression(table, expr->as.term_expr.right);
+        MiValue left = mi_eval_expression(table, expr->as.term_expr.left, out);
+        MiValue right = mi_eval_expression(table, expr->as.term_expr.right, out);
         MiType resultType;
 
         if (left.type == MI_TYPE_STRING || right.type == MI_TYPE_STRING)
@@ -370,8 +370,8 @@ MiValue mi_eval_expression(MiSymbolTable* table, ASTExpression* expr)
       break;
     case EXPR_TERM: 
       {
-        MiValue left =  mi_eval_expression(table, expr->as.factor_expr.left);
-        MiValue right = mi_eval_expression(table, expr->as.factor_expr.right);
+        MiValue left =  mi_eval_expression(table, expr->as.factor_expr.left, out);
+        MiValue right = mi_eval_expression(table, expr->as.factor_expr.right, out);
         MiType resultType;
 
         if (left.type == MI_TYPE_STRING || right.type == MI_TYPE_STRING)
@@ -437,7 +437,7 @@ MiValue mi_eval_expression(MiSymbolTable* table, ASTExpression* expr)
 
           while(index_expression)
           {
-            MiValue index = mi_eval_expression(table, index_expression);
+            MiValue index = mi_eval_expression(table, index_expression, out);
 
             if (index.type != MI_TYPE_INT && index.type != MI_TYPE_BOOL)
             {
@@ -480,7 +480,7 @@ MiValue mi_eval_expression(MiSymbolTable* table, ASTExpression* expr)
       }
     case EXPR_UNARY:
       {
-        MiValue value = mi_eval_expression(table, expr->as.unary_expr.expression);
+        MiValue value = mi_eval_expression(table, expr->as.unary_expr.expression, out);
         ASSERT(expr->as.unary_expr.op == OP_UNARY_MINUS || expr->as.unary_expr.op == OP_UNARY_PLUS || expr->as.unary_expr.op == OP_LOGICAL_NOT);
         if (expr->as.unary_expr.op == OP_UNARY_MINUS)
           value.as.number_value = -value.as.number_value;
@@ -497,8 +497,8 @@ MiValue mi_eval_expression(MiSymbolTable* table, ASTExpression* expr)
     case EXPR_LOGICAL:
       {
         //TODO: validate conversion between types for boolean comparisons
-        MiValue left = mi_eval_expression(table, expr->as.term_expr.left);
-        MiValue right = mi_eval_expression(table, expr->as.term_expr.right);
+        MiValue left = mi_eval_expression(table, expr->as.term_expr.left, out);
+        MiValue right = mi_eval_expression(table, expr->as.term_expr.right, out);
 
         switch (expr->as.logical_expr.op)
         {
@@ -518,8 +518,8 @@ MiValue mi_eval_expression(MiSymbolTable* table, ASTExpression* expr)
     case EXPR_COMPARISON:
       {
         //TODO: validate conversion between types for boolean comparisons
-        MiValue left = mi_eval_expression(table, expr->as.term_expr.left);
-        MiValue right = mi_eval_expression(table, expr->as.term_expr.right);
+        MiValue left = mi_eval_expression(table, expr->as.term_expr.left, out);
+        MiValue right = mi_eval_expression(table, expr->as.term_expr.right, out);
 
         switch (expr->as.comparison_expr.op)
         {
@@ -554,13 +554,13 @@ MiValue mi_eval_expression(MiSymbolTable* table, ASTExpression* expr)
   return mi_runtime_value_create_void();
 }
 
-MiValue mi_eval_statement(MiSymbolTable* table, ASTStatement* stmt) 
+MiValue mi_eval_statement(MiSymbolTable* table, ASTStatement* stmt, FILE* out) 
 {
   switch (stmt->type) 
   {
     case AST_STATEMENT_RAW: 
       {
-        printf("%.*s", (int) stmt->as.raw.len, stmt->as.raw.start);
+        fprintf(out, "%.*s", (int) stmt->as.raw.len, stmt->as.raw.start);
         return mi_runtime_value_create_void();
       }
     case AST_STATEMENT_ASSIGNMENT: 
@@ -574,7 +574,7 @@ MiValue mi_eval_statement(MiSymbolTable* table, ASTStatement* stmt)
           ASTExpression* arg = stmt->as.assignment.rvalue->as.array_init_expr.args;
           while (arg != NULL)
           {
-            MiValue e = mi_eval_expression(table, arg);
+            MiValue e = mi_eval_expression(table, arg, out);
             switch(e.type)
             {
               case MI_TYPE_BOOL:
@@ -603,7 +603,7 @@ MiValue mi_eval_statement(MiSymbolTable* table, ASTStatement* stmt)
         }
         else
         {
-          value = mi_eval_expression(table, stmt->as.assignment.rvalue);
+          value = mi_eval_expression(table, stmt->as.assignment.rvalue, out);
         }
 
         if (value.error_code != MI_ERROR_SUCCESS)
@@ -613,7 +613,7 @@ MiValue mi_eval_statement(MiSymbolTable* table, ASTStatement* stmt)
         if (stmt->as.assignment.lvalue->as.lvalue.type == LVALUE_ARRAY_ACCESS)
         {
           ASSERT(stmt->as.assignment.lvalue->as.lvalue.index_expression != NULL);
-          MiValue index_expr_result = mi_eval_expression(table, stmt->as.assignment.lvalue->as.lvalue.index_expression);
+          MiValue index_expr_result = mi_eval_expression(table, stmt->as.assignment.lvalue->as.lvalue.index_expression, out);
           if (index_expr_result.type != MI_TYPE_INT)
           {
             index_expr_result.error_code = MI_ERROR_ARRAY_INDEX_TYPE;
@@ -698,19 +698,19 @@ MiValue mi_eval_statement(MiSymbolTable* table, ASTStatement* stmt)
     case AST_STATEMENT_IF: 
       {
         MiValue result = mi_runtime_value_create_void();
-        MiValue condition = condition = mi_eval_expression(table, stmt->as.if_stmt.condition);
+        MiValue condition = condition = mi_eval_expression(table, stmt->as.if_stmt.condition, out);
         ASSERT(condition.type == MI_TYPE_FLOAT || condition.type == MI_TYPE_INT || condition.type == MI_TYPE_BOOL);
 
         if (condition.as.number_value != 0) 
         {
           s_mi_symbol_table_scope_begin(table);
-          result = mi_eval_statement_list(table, stmt->as.if_stmt.if_branch);
+          result = mi_eval_statement_list(table, stmt->as.if_stmt.if_branch, out);
           s_mi_symbol_table_scope_end(table);
         }
         else if (stmt->as.if_stmt.else_branch != NULL)
         {
           s_mi_symbol_table_scope_begin(table);
-          result = mi_eval_statement_list(table, stmt->as.if_stmt.else_branch);
+          result = mi_eval_statement_list(table, stmt->as.if_stmt.else_branch, out);
           s_mi_symbol_table_scope_end(table);
         }
 
@@ -722,14 +722,14 @@ MiValue mi_eval_statement(MiSymbolTable* table, ASTStatement* stmt)
         MiValue result = mi_runtime_value_create_void();
         s_mi_symbol_table_scope_begin(table);
         // Initialization
-        MiValue init = mi_eval_statement(table, stmt->as.for_stmt.init);
+        MiValue init = mi_eval_statement(table, stmt->as.for_stmt.init, out);
         if (init.error_code != MI_ERROR_SUCCESS)
           return init;
 
         while(true)
         {
           // Condition
-          MiValue condition = condition = mi_eval_expression(table, stmt->as.for_stmt.condition);
+          MiValue condition = condition = mi_eval_expression(table, stmt->as.for_stmt.condition, out);
           ASSERT(condition.type == MI_TYPE_FLOAT || condition.type == MI_TYPE_INT || condition.type == MI_TYPE_BOOL);
 
           if (condition.error_code != MI_ERROR_SUCCESS)
@@ -741,7 +741,7 @@ MiValue mi_eval_statement(MiSymbolTable* table, ASTStatement* stmt)
           if (condition.as.number_value == 0)
             break;
 
-          MiValue v = mi_eval_statement_list(table, stmt->as.for_stmt.body);
+          MiValue v = mi_eval_statement_list(table, stmt->as.for_stmt.body, out);
           if (v.error_code != MI_ERROR_SUCCESS)
           {
             result.error_code = v.error_code;
@@ -752,7 +752,7 @@ MiValue mi_eval_statement(MiSymbolTable* table, ASTStatement* stmt)
             break;
 
           // Update
-          MiValue update = condition = mi_eval_statement(table, stmt->as.for_stmt.update);
+          MiValue update = condition = mi_eval_statement(table, stmt->as.for_stmt.update, out);
           ASSERT(update.type == MI_TYPE_FLOAT || update.type == MI_TYPE_INT || update.type == MI_TYPE_BOOL);
           if (update.error_code != MI_ERROR_SUCCESS)
           {
@@ -771,7 +771,7 @@ MiValue mi_eval_statement(MiSymbolTable* table, ASTStatement* stmt)
         while (true)
         {
           // Eval Condition and break if false
-          MiValue value = mi_eval_expression(table, stmt->as.while_stmt.condition);
+          MiValue value = mi_eval_expression(table, stmt->as.while_stmt.condition, out);
           if(value.error_code != MI_ERROR_SUCCESS)
             return value;
 
@@ -781,7 +781,7 @@ MiValue mi_eval_statement(MiSymbolTable* table, ASTStatement* stmt)
           // Eval block
           ASTStatement* statement = stmt->as.while_stmt.body;
           s_mi_symbol_table_scope_begin(table);
-          MiValue v = mi_eval_statement_list(table, statement);
+          MiValue v = mi_eval_statement_list(table, statement, out);
           s_mi_symbol_table_scope_end(table);
 
           if (v.error_code != MI_ERROR_SUCCESS)
@@ -794,7 +794,7 @@ MiValue mi_eval_statement(MiSymbolTable* table, ASTStatement* stmt)
         break;
       }
     case AST_STATEMENT_FUNCTION_CALL: 
-      return mi_eval_expression(table, stmt->as.expression);
+      return mi_eval_expression(table, stmt->as.expression, out);
       break;
     case AST_STATEMENT_FUNCTION_DECL: 
       {
@@ -811,12 +811,12 @@ MiValue mi_eval_statement(MiSymbolTable* table, ASTStatement* stmt)
   return mi_runtime_value_create_void();
 }
 
-MiValue mi_eval_statement_list(MiSymbolTable* table, ASTStatement* first_stmt)
+MiValue mi_eval_statement_list(MiSymbolTable* table, ASTStatement* first_stmt, FILE* out)
 {
   ASTStatement* statement = first_stmt;
   while(statement != NULL)
   {
-    MiValue v = mi_eval_statement(table, statement);
+    MiValue v = mi_eval_statement(table, statement, out);
 
     if (v.error_code != MI_ERROR_SUCCESS)
       return v;
@@ -830,14 +830,14 @@ MiValue mi_eval_statement_list(MiSymbolTable* table, ASTStatement* first_stmt)
   return mi_runtime_value_create_void();
 }
 
-int mi_eval_program(MiSymbolTable* table, ASTProgram* program) 
+int mi_eval_program(MiSymbolTable* table, ASTProgram* program, FILE* out) 
 {
   MiValue last_value = {0};
   ASTStatement* statement = program->body;
 
   while(statement != NULL)
   {
-    last_value = mi_eval_statement(table, statement);
+    last_value = mi_eval_statement(table, statement, out);
     if (last_value.error_code != MI_ERROR_SUCCESS)
     {
       int code = last_value.error_code;

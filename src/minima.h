@@ -23,7 +23,7 @@ typedef struct
 } MiProgram;
 
 MiProgram*  mi_program_create(const char* source);  // Initializes a `MiProgram` from source code.
-int         mi_program_run(MiProgram* program);     // Runs a MiProgram
+int         mi_program_run(MiProgram* program, FILE* out);     // Runs a MiProgram
 void        mi_program_destroy(MiProgram* program); // Destroys a MiProgram
 
 #ifdef __cplusplus

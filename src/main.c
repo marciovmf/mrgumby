@@ -22,8 +22,10 @@ int test_language(int argc, char **argv)
 
   MiProgram* program = mi_program_create(buffer);
 
-
-  int result = mi_program_run(program);
+  FILE* fd = fopen(".static", "wb+");
+  ASSERT(fd != NULL);
+  int result = mi_program_run(program, fd);
+  fclose(fd);
 
   mi_ast_program_destroy(program->ast);
   free(buffer);

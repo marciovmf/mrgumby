@@ -28,6 +28,8 @@ extern "C" {
 #include "minima_array.h"
 #include "minima_ast.h"
 
+#include <stdio.h>
+
 //
 // Symbol Table
 //
@@ -77,7 +79,7 @@ typedef struct MiVariable_t
   unsigned int scope;
 } MiVariable;
 
-typedef MiValue (*MiFunctionPtr)(int param_count, MiValue* parameters);
+typedef MiValue (*MiFunctionPtr)(int param_count, MiValue* parameters, FILE* out);
 
 typedef struct MiFunction_t
 {
@@ -159,7 +161,7 @@ void mi_symbol_table_destroy(MiSymbolTable* table);
  * @param program Pointer to the AST program node to evaluate.
  * @return Exit code or runtime status of the program execution.
  */
-int mi_eval_program(MiSymbolTable* table, ASTProgram* program);
+int mi_eval_program(MiSymbolTable* table, ASTProgram* program, FILE* out);
 
 /**
  * @brief Creates a boolean runtime value

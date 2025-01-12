@@ -14,31 +14,31 @@
 //TODO: Function declaration
 
 
-static void s_print_type(MiValue* value, char* separator)
+static void s_print_type(MiValue* value, char* separator, FILE* out)
 {
   if (value->type == MI_TYPE_BOOL)
   {
-    printf("%s%s",((int) value->as.number_value) ? "true" : "false", separator);
+    fprintf(out, "%s%s",((int) value->as.number_value) ? "true" : "false", separator);
   }
   else if (value->type == MI_TYPE_INT)
   {
-    printf("%d%s", (int) value->as.number_value, separator);
+    fprintf(out, "%d%s", (int) value->as.number_value, separator);
   }
   else if (value->type == MI_TYPE_FLOAT)
   {
-    printf("%f%s", value->as.number_value, separator);
+    fprintf(out, "%f%s", value->as.number_value, separator);
   }
   else if (value->type == MI_TYPE_STRING)
   {
-    printf("%s%s", value->as.string_value, separator);
+    fprintf(out, "%s%s", value->as.string_value, separator);
   }
   else
   {
-    log_info("Runtime value %llxn", value);
+    fprintf(out, "Runtime value %llxn", (u64) value);
   }
 }
 
-static MiValue s_function_print(int param_count, MiValue* args)
+static MiValue s_function_print(int param_count, MiValue* args, FILE* out)
 {
   for (int i = 0; i < param_count; i++)
   {
@@ -53,7 +53,7 @@ static MiValue s_function_print(int param_count, MiValue* args)
     }
     else
     {
-      s_print_type(value, sep);
+      s_print_type(value, sep, out);
 
     }
   }
@@ -61,16 +61,18 @@ static MiValue s_function_print(int param_count, MiValue* args)
   return mi_runtime_value_create_void();
 }
 
-static MiValue s_function_array_size(int param_count, MiValue* args)
+static MiValue s_function_array_size(int param_count, MiValue* args, FILE* out)
 {
+  UNUSED(out);
   ASSERT(param_count == 1);
   ASSERT(args != NULL);
   ASSERT(args->type == MI_TYPE_ARRAY);
   return mi_runtime_value_create_int((int) args[0].as.array_value->size);
 }
 
-static MiValue s_function_array_append(int param_count, MiValue* parameters)
+static MiValue s_function_array_append(int param_count, MiValue* parameters, FILE* out)
 {
+  UNUSED(out);
   ASSERT(param_count == 2);
   ASSERT(parameters != NULL);
   ASSERT(parameters->type == MI_TYPE_ARRAY);
@@ -131,9 +133,11 @@ MiProgram* mi_program_create(const char* source)
   return program;
 }
 
-int mi_program_run(MiProgram* program)
+int mi_program_run(MiProgram* program, FILE* out)
 {
-  return mi_eval_program(&program->symbols, program->ast);
+  if (out == NULL)
+    out = stdout;
+  return mi_eval_program(&program->symbols, program->ast, out);
 }
 
 void mi_program_destroy(MiProgram* program)
